@@ -1,0 +1,33 @@
+{
+  "name": "cms",
+  "version": "0.0.1",
+  "description": "Tiny cms skeleton",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/espenkronasoftwaregroup/cms.git"
+  },
+  "keywords": [
+    "cms"
+  ],
+  "author": "DjKlazaplaza",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/espenkronasoftwaregroup/cms/issues"
+  },
+  "homepage": "https://github.com/espenkronasoftwaregroup/cms#readme",
+  "dependencies": {
+    "body-parser": "1.20.0",
+    "cookie-parser": "1.4.6",
+    "ejs": "3.1.8",
+    "esbuild": "0.14.39",
+    "express": "4.18.1",
+    "express-fileupload": "1.3.1",
+    "sass": "1.51.0",
+    "showdown": "2.1.0"
+  }
+}
