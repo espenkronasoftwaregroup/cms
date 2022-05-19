@@ -78,7 +78,7 @@ export default class Server {
 		}
 
 		this.app.all('*', async (req, res, next) => {
-			req.paths = this.opts.Errorpaths;
+			req.paths = this.opts.paths;
 			req.pageCreator = this.pageCreator;
 
 			// ignore anything regarding the static files and let express handle that
@@ -104,6 +104,12 @@ export default class Server {
 			if (result.redirect) {
 				res.redirect(result.redirect);
 				return;
+			}
+
+			if (result.headers) {
+				for (const [key, value] of Object.entries(result.headers)) {
+					res.setHeader(key, value);
+				}
 			}
 
 			res.status(result.status);

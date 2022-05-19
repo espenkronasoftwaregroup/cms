@@ -121,6 +121,10 @@ export default class PageCreator {
 					return result;
 				}
 
+				if (controllerResult.headers) {
+					result.headers = controllerResult.headers;
+				}
+
 				if (controllerResult.raw) {
 					result.status = controllerResult.raw.status || 200;
 					result.contentType = controllerResult.raw.type || 'text/plain';
