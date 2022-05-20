@@ -1,2 +1,2 @@
 # cms
-A tiny cms skeleton
+A cms middleware for express based on markdown and ejs templates.
