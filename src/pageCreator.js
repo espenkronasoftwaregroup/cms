@@ -145,8 +145,23 @@ export default class PageCreator {
 			if (contents.includes('template.ejs')) {
 				const templateString = (await readFile(path.join(pageRootPath,  'template.ejs'))).toString();
 
-				// let the items controller handle content for items
-				if (!isItem) {
+				if (isItem) {
+					const name = path.basename(req.path);
+					const mdPath = path.join(pageRootPath, name + '.md');
+					if (await canRead(mdPath)) {
+						try {
+							const md = await readFile(mdPath);
+							const html = this.converter.makeHtml(md.toString());
+							data.viewData.itemContent = html;
+						} catch (err) {
+							return {
+								status: 500,
+								contentType: 'text/plain',
+								content: `Markdown at ${mdFilePath} exploded\n${err.stack}`
+							}
+						}
+					}
+				} else {
 					for (const filename of contents.filter(n => n.endsWith('.md'))) {
 						const mdFilePath = path.join(pageRootPath, filename);
 						try {
@@ -164,7 +179,7 @@ export default class PageCreator {
 							}
 						}
 					}
-				}
+				} 
 
 				if (beforeRenderCb) {
 					data = await beforeRenderCb(data);
