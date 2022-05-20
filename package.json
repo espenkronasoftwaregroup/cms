@@ -1,7 +1,7 @@
 {
   "name": "cms",
   "version": "0.0.1",
-  "description": "Tiny cms skeleton",
+  "description": "A cms middleware for express based on markdown and ejs templates.",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
