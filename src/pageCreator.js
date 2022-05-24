@@ -1,17 +1,17 @@
 import { canRead, getPathsSync, readDir, readFile } from "./utils.js";
-import showdown from 'showdown';
 import fs from 'fs';
 import path from 'path';
 import ejs from 'ejs';
 import { pathToFileURL } from 'url';
+import MarkdownIt from "markdown-it";
 
 export default class PageCreator {
 	constructor(opts) {
-		Object.assign(this, opts);
-		this.pages = getPathsSync(this.pagesPath, '');
-		this.items = getPathsSync(this.itemsPath, '');
-		this.notFoundTemplate = fs.readFileSync(this.notFoundTemplatePath).toString();
-		this.converter = new showdown.Converter();
+		this.opts = opts;
+		this.pages = getPathsSync(this.opts.pagesPath, '');
+		this.items = getPathsSync(this.opts.itemsPath, '');
+		this.notFoundTemplate = fs.readFileSync(this.opts.notFoundTemplatePath).toString();
+		this.md = new MarkdownIt();
 	}
 
 	async getPagePath(urlPath) {
@@ -30,9 +30,9 @@ export default class PageCreator {
 			}
 		}
 
-		if (pagePath == '/' && this.rootPagePath) {
-			if (await canRead(path.join(this.pagesPath, this.rootPagePath))) {
-				pagePath = this.rootPagePath;
+		if (pagePath == '/' && this.opts.rootPagePath) {
+			if (await canRead(path.join(this.opts.pagesPath, this.opts.rootPagePath))) {
+				pagePath = this.opts.rootPagePath;
 			}
 		}
 
@@ -41,14 +41,14 @@ export default class PageCreator {
 
 	// todo: cache this
 	async getSharedContent() {
-		const files = await readDir(this.sharedContentPath);
+		const files = await readDir(this.opts.sharedContentPath);
 		const result = {};
 
 		for (const file of files) {
 			if (!file.endsWith('.md')) continue;
 
-			const data = await readFile(path.join(this.sharedContentPath, file));
-			const html = this.converter.makeHtml(data.toString());
+			const data = await readFile(path.join(this.opts.sharedContentPath, file));
+			const html = this.md.render(data.toString());
 			result[file.replace('.md', '')] = html;
 		}
 
@@ -73,8 +73,8 @@ export default class PageCreator {
 				content: await this.getSharedContent(),
 				activePath: req.path,
 				query: req.query,
-				jsBundles: this.jsBundles,
-				cssBundles: this.cssBundles,
+				jsBundles: this.opts.jsBundles, // todo: these should not be here
+				cssBundles: this.opts.cssBundles,
 			}
 		};
 
@@ -100,9 +100,9 @@ export default class PageCreator {
 
 				try {
 					if (customPath) {
-						controllerResult = await module.controller({...req, path: customPath });
+						controllerResult = await module.controller({...req, path: customPath }, { ...this.opts, pageCreator: this });
 					} else {
-						controllerResult = await module.controller(req);
+						controllerResult = await module.controller(req, { ...this.opts, pageCreator: this });
 					}
 				} catch (err) {
 					return {
@@ -151,7 +151,7 @@ export default class PageCreator {
 					if (await canRead(mdPath)) {
 						try {
 							const md = await readFile(mdPath);
-							const html = this.converter.makeHtml(md.toString());
+							const html = this.md.render(md.toString());
 							data.viewData.itemContent = html;
 						} catch (err) {
 							return {
@@ -166,7 +166,7 @@ export default class PageCreator {
 						const mdFilePath = path.join(pageRootPath, filename);
 						try {
 							const md = await readFile(mdFilePath);
-							const html = this.converter.makeHtml(md.toString());
+							const html = this.md.render(md.toString());
 							
 							if (!data.viewData.content) data.viewData.content = {};
 
@@ -186,7 +186,7 @@ export default class PageCreator {
 				}
 
 				try {
-					const html = ejs.render(templateString, data, { views: [pageRootPath, this.partialsPath] });
+					const html = ejs.render(templateString, data, { views: [pageRootPath, this.opts.partialsPath] });
 					result.content = html;
 				} catch (err) {
 					return {
@@ -203,7 +203,7 @@ export default class PageCreator {
 		return {
 			status: 404,
 			contentType: 'text/html',
-			content: ejs.render(this.notFoundTemplate, data, { views: [this.partialsPath] })
+			content: ejs.render(this.notFoundTemplate, data, { views: [this.opts.partialsPath] })
 		}
 	}
 }
