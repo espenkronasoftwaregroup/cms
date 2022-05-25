@@ -46,15 +46,6 @@ function canRead(fsPath) {
 	});
 }
 
-function createDir(faPath, recursive = true) {
-	return new Promise((resolve, reject) => {
-		fs.mkdir(fsPath, { recursive }, function (err) {
-			if (err) reject(err);
-			else resolve();
-		})
-	});
-}
-
 // resolves paths for tree
 async function buildFolderTree(dirPath, filter) {
 	const result = {};
@@ -128,7 +119,6 @@ function getPathsSync(rootPath, prefix) {
 export {
 	buildFolderTree,
 	buildFileTree,
-	createDir,
 	readDir,
 	lstat,
 	stat,
