@@ -41,9 +41,12 @@ export default class PageCreator {
 
 	// todo: cache this
 	async getSharedContent() {
-		const files = await readDir(this.opts.sharedContentPath);
 		const result = {};
 
+		if (!this.opts?.sharedContentPath) return result;
+
+		const files = await readDir(this.opts.sharedContentPath);
+	
 		for (const file of files) {
 			if (!file.endsWith('.md')) continue;
 
