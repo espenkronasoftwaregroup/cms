@@ -103,11 +103,12 @@ async function getPaths(rootPath, prefix) {
 	return result;
 }
 
-function getPathsSync(rootPath, prefix) {
+function getPathsSync(rootPath, prefix, excludedDirs) {
 	let dirs = fs.readdirSync(rootPath).filter(n => n !== '.' && n !== '..' && fs.lstatSync(path.join(rootPath, n)).isDirectory());
 	let result = {};
 
 	for (const dir of dirs) {
+		if (excludedDirs && excludedDirs.includes(dir)) continue;
 		const key = prefix + '/' + dir;
 		result[key] = path.join(rootPath, dir);
 		result = {...result, ...getPathsSync(path.join(rootPath, dir), key)};

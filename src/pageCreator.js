@@ -9,7 +9,7 @@ export default class PageCreator {
 	constructor(opts) {
 		this.opts = opts;
 		this.pages = getPathsSync(this.opts.pagesPath, '');
-		this.items = getPathsSync(this.opts.itemsPath, '');
+		this.items = getPathsSync(this.opts.itemsPath, '', ['items']);
 		this.notFoundTemplate = fs.readFileSync(this.opts.notFoundTemplatePath).toString();
 		this.md = new MarkdownIt();
 	}
@@ -84,12 +84,14 @@ export default class PageCreator {
 		const pagePath = await this.getPagePath(customPath || req.path);
 		let pageRootPath = null;
 		let isItem = false;
+		let itemName;
 
 		if (pagePath && this.pages[pagePath]) {
 			pageRootPath = this.pages[pagePath];
 		} else if (pagePath && this.items[pagePath]) {
 			pageRootPath = this.items[pagePath];
 			isItem = true;
+			itemName = path.basename(req.path);
 		}
 
 		if (pageRootPath) {
@@ -149,8 +151,7 @@ export default class PageCreator {
 				const templateString = (await readFile(path.join(pageRootPath,  'template.ejs'))).toString();
 
 				if (isItem) {
-					const name = path.basename(req.path);
-					const mdPath = path.join(pageRootPath, name + '.md');
+					const mdPath = path.join(pageRootPath, itemName, 'content.md');
 					if (await canRead(mdPath)) {
 						try {
 							const md = await readFile(mdPath);
@@ -189,7 +190,13 @@ export default class PageCreator {
 				}
 
 				try {
-					const html = ejs.render(templateString, data, { views: [pageRootPath, this.opts.partialsPath] });
+					const views = [pageRootPath, this.opts.partialsPath];
+
+					if (isItem) {
+						views.push(path.join(pageRootPath, itemName));
+					}
+
+					const html = ejs.render(templateString, data, { views });
 					result.content = html;
 				} catch (err) {
 					return {
