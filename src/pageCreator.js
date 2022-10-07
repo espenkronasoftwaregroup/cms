@@ -150,9 +150,26 @@ export default class PageCreator {
 			if (contents.includes('template.ejs')) {
 				const templateString = (await readFile(path.join(pageRootPath,  'template.ejs'))).toString();
 
+				// If this is a request for an item, first check in the item dir for a content template
+				// and use that if it exits. If that does not exist, check for a content markdown file
+				// and render that as html instead.
 				if (isItem) {
+					const ejsPath = path.join(pageRootPath, itemName, 'content.ejs');
 					const mdPath = path.join(pageRootPath, itemName, 'content.md');
-					if (await canRead(mdPath)) {
+					if (await canRead(ejsPath)) {
+						try {
+							const template = await readFile(ejsPath);
+							const html = ejs.render(template.toString(), {...data}, { views: [this.opts.partialsPath]});
+							data.viewData.itemContent = html;
+						} catch (err) {
+							return {
+								status: 500,
+								contentType: 'text/plain',
+								content: `EJS at ${ejsPath} exploded\n${err.stack}`
+							}
+						}
+					}
+					 else if (await canRead(mdPath)) {
 						try {
 							const md = await readFile(mdPath);
 							const html = this.md.render(md.toString());
