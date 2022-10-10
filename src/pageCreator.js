@@ -62,10 +62,9 @@ export default class PageCreator {
 	 * Compile a content, content type and status code for a request
 	 * @param {*} req the express request object
 	 * @param {string} opts.customPath A custom path used for controller/template/content look up. If not supplied req.path will be used
-	 * @param {function(Object)} opts.beforeRenderCb Can be used to alter the data passed to the render function
 	 * @returns {*} Response data
 	 */
-	async createPage(req, {customPath, beforeRenderCb} = {}) {
+	async createPage(req, {customPath, itemContentTemplateString, itemContentHtmlString} = {}) {
 		const result = {
 			status: 200,
 			contentType: 'text/html'
@@ -156,7 +155,22 @@ export default class PageCreator {
 				if (isItem) {
 					const ejsPath = path.join(pageRootPath, itemName, 'content.ejs');
 					const mdPath = path.join(pageRootPath, itemName, 'content.md');
-					if (await canRead(ejsPath)) {
+
+					if (itemContentTemplateString) {
+						try {
+							data.viewData.itemContent = ejs.render(itemContentTemplateString, {...data}, { views: [this.opts.partialsPath]});
+						} catch (err) {
+							return {
+								status: 500,
+								contentType: 'text/plain',
+								content: `EJS at ${ejsPath} exploded\n${err.stack}`
+							}
+						}
+					}
+					else if (itemContentHtmlString) {
+						data.viewData.itemContent = itemContentHtmlString;
+					}
+					else if (await canRead(ejsPath)) {
 						try {
 							const template = await readFile(ejsPath);
 							const html = ejs.render(template.toString(), {...data}, { views: [this.opts.partialsPath]});
@@ -169,7 +183,7 @@ export default class PageCreator {
 							}
 						}
 					}
-					 else if (await canRead(mdPath)) {
+					else if (await canRead(mdPath)) {
 						try {
 							const md = await readFile(mdPath);
 							const html = this.md.render(md.toString());
@@ -201,13 +215,6 @@ export default class PageCreator {
 						}
 					}
 				} 
-
-				// this is used for creating page previews, so that an in browser markdown
-				// editor can be used and you dont have to write stuff to disk to preview it.
-				// todo: Can this be passed in as an argumnet?
-				if (beforeRenderCb) {
-					data = await beforeRenderCb(data);
-				}
 
 				try {
 					const views = [pageRootPath, this.opts.partialsPath];
