@@ -144,8 +144,8 @@ test('Controller, no template', async t => {
 	const response = await axios.get(`http://localhost:${server.address().port}/raw`);
 	t.equal(200, response.status, 'Response status should be 200');
 	t.equal(response.headers.get('content-type'), 'text/plain', 'Content type should be text/plain');
-	console.log(response.data, typeof(response.data))
-	t.equal(response.data, '{"one":"yes","two":"no"}', 'Body should contain strigified json');
+	// Axios cannot accept that this should be treated as text. Fuck axios
+	t.equal(JSON.stringify(response.data), '{"one":"yes","two":"no"}', 'Body should contain strigified json');
 
 	server.close();
 	t.end();
@@ -174,10 +174,11 @@ test('Controller, cookies', async t => {
 
 	const server = app.listen();
 
-	const response = await fetch(`http://localhost:${server.address().port}/cookies`, {credentials: 'same-origin'});
+	const response = await axios.get(`http://localhost:${server.address().port}/cookies`);
 	t.equal(200, response.status, 'Response status should be 200');
 	t.equal(response.headers.get('content-type'), 'text/plain', 'Content type should be text/plain');
-	t.equal(await response.text(), 'cookie set', 'Body should be "cookie set"');
+	t.equal(response.data, 'cookie set', 'Body should be "cookie set"');
+	t.equal(response.headers.get('set-cookie'), 'key=value; Path=/');
 	
 	server.close();
 	t.end();

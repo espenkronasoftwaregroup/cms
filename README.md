@@ -17,7 +17,34 @@ The middleware takes a couple of paths as argument:
 }
 ```
 
-# Prio for items
+## Prio for items
 Use item root controller then root template
 If item has a content.ejs template file load that into viewData.content otherwise load content.md into viewdata.content
 if data.json exists, load that into viewData.data and pass to template rendering
+
+## Example usage
+
+Have a folder structure that looks like this:
+```
+data
+│
+└───items
+│   │
+│   └───blog
+│       │   template.ejs
+|       |
+│       └───i_love_cats
+│       │   content.ejs
+|       |
+│       └───cats_are_the_best
+|           content.md
+│   
+└───pages
+|   |
+│   └───cats
+|       controller.js
+|       template.ejs
+|
+└───partials
+    head.ejs
+```

@@ -202,6 +202,9 @@ export default class PageCreator {
 					}
 				} 
 
+				// this is used for creating page previews, so that an in browser markdown
+				// editor can be used and you dont have to write stuff to disk to preview it.
+				// todo: Can this be passed in as an argumnet?
 				if (beforeRenderCb) {
 					data = await beforeRenderCb(data);
 				}
