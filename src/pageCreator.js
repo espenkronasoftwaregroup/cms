@@ -147,8 +147,6 @@ export class PageCreator {
 			}
 
 			if (contents.includes('template.ejs')) {
-				const templateString = (await readFile(path.join(pageRootPath,  'template.ejs'))).toString();
-
 				// If this is a request for an item, first check in the item dir for a content template
 				// and use that if it exits. If that does not exist, check for a content markdown file
 				// and render that as html instead.
@@ -223,6 +221,7 @@ export class PageCreator {
 						views.push(path.join(pageRootPath, itemName));
 					}
 
+					const templateString = (await readFile(path.join(pageRootPath,  'template.ejs'))).toString();
 					const html = ejs.render(templateString, data, { views });
 					result.content = html;
 				} catch (err) {
