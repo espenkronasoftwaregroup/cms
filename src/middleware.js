@@ -1,4 +1,4 @@
-import PageCreator from "./pageCreator.js"
+import {PageCreator} from "./pageCreator.js"
 
 function cmsMiddlewareFactory(opts) {
 	const pageCreator = new PageCreator(opts);

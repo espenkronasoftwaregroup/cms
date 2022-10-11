@@ -5,7 +5,7 @@ import ejs from 'ejs';
 import { pathToFileURL } from 'url';
 import MarkdownIt from "markdown-it";
 
-export default class PageCreator {
+export class PageCreator {
 	constructor(opts) {
 		this.opts = opts;
 		this.pages = getPathsSync(this.opts.pagesPath, '');
