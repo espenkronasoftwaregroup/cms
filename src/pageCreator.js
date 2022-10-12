@@ -1,4 +1,4 @@
-import { canRead, getPathsSync, readDir, readFile } from "./utils.js";
+import { canRead, getPathsSync, getTempFilePath, readDir, readFile } from "./utils.js";
 import fs from 'fs';
 import path from 'path';
 import ejs from 'ejs';
@@ -64,7 +64,7 @@ export class PageCreator {
 	 * @param {string} opts.customPath A custom path used for controller/template/content look up. If not supplied req.path will be used
 	 * @returns {*} Response data
 	 */
-	async createPage(req, {customPath, itemContentTemplateString, itemContentHtmlString} = {}) {
+	async createPage(req, {customPath, itemContentTemplateString, itemContentHtmlString, itemControllerJsString} = {}) {
 		const result = {
 			status: 200,
 			contentType: 'text/html'
@@ -99,7 +99,25 @@ export class PageCreator {
 
 			if (contents.includes('controller.mjs')) {
 				const controllerPath = path.join(pageRootPath, 'controller.mjs');
-				const module = await import(pathToFileURL(controllerPath));
+				let module;
+				
+				if (itemControllerJsString) {
+					// because of reasons javascript is a lot easier to load from disk, so write that shit to file first.
+					try {
+						const tmpfile = await getTempFilePath();
+						fs.writeFileSync(tmpfile, itemControllerJsString, 'utf-8');
+						module = await import(pathToFileURL(tmpfile));
+					} catch (err) {
+						return {
+							status: 400,
+							contentType: 'text/plain',
+							content: `Injected controller code exploded!\n${err.stack}`
+						}
+					}
+				} else {
+					module = await import(pathToFileURL(controllerPath));
+				}
+
 				let controllerResult;
 
 				try {

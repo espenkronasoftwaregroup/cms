@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import crypto from 'crypto';
 
 function readFile(filePath) {
 	return new Promise((resolve, reject) => {
@@ -117,9 +119,23 @@ function getPathsSync(rootPath, prefix, excludedDirs) {
 	return result;
 }
 
+async function getTempFilePath() {
+	const td  = os.tmpdir();
+	let tmpFilePath;
+
+	do {
+		const value = crypto.getRandomValues(new Uint8Array(10));
+		const fileName = value.map(m=>('0'+m.toString(16)).slice(-2)).join('') + '.mjs';
+		tmpFilePath = path.join(td, fileName);
+	} while(await canRead(tmpFilePath));
+
+	return tmpFilePath;
+}
+
 export {
 	buildFolderTree,
 	buildFileTree,
+	getTempFilePath,
 	readDir,
 	lstat,
 	stat,

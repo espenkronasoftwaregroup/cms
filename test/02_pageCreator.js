@@ -44,3 +44,30 @@ test('Page creator, override item template', async t => {
 	t.assert(result.content, 'Content should be set');
 	t.true(result.content.includes('<p>stuff item controller</p>'), 'Content should include the injected template string');
 });
+
+test('Page creator, override item controller', async t => {
+	const pc = new PageCreator(options);
+	const req = {
+		path: '/bar/foo'
+	};
+	const newContent =  `
+		async function controller (req) {
+			return {
+				viewData: {
+					title: 'dynamic controller!',
+				}
+			};
+		}
+		
+		export {controller}
+	`;
+
+	const result = await pc.createPage(req, { itemControllerJsString: newContent });
+
+	t.assert(result, 'Result should not be null or undefined');
+	t.equal(result.status, 200, 'Status code should be 200');
+	t.assert(result.contentType, 'Content type should be set');
+	t.equal(result.contentType, 'text/html', 'Content type should be text/hml');
+	t.assert(result.content, 'Content should be set');
+	t.equal(result.content, '<h1>dynamic controller!</h1>', 'Controller dynamic content should be in the result');
+});
