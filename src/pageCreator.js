@@ -122,9 +122,9 @@ export class PageCreator {
 
 				try {
 					if (customPath) {
-						controllerResult = await module.controller({...req, path: customPath }, { ...this.opts, pageCreator: this });
+						controllerResult = await module.controller({...req, path: customPath }, { ...this.opts, pageCreator: this, controllerPath: pagePath });
 					} else {
-						controllerResult = await module.controller(req, { ...this.opts, pageCreator: this });
+						controllerResult = await module.controller(req, { ...this.opts, pageCreator: this, controllerPath: pagePath });
 					}
 				} catch (err) {
 					return {

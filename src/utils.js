@@ -48,48 +48,6 @@ function canRead(fsPath) {
 	});
 }
 
-// resolves paths for tree
-async function buildFolderTree(dirPath, filter) {
-	const result = {};
-	const dirContents = await readDir(dirPath);
-
-	for (const entry of dirContents) {
-		if (filter) {
-			if (filter(entry, dirPath)) continue;
-		}
-
-		const p = path.join(dirPath, entry);
-		const s = await stat(p);
-
-		result[entry] = {
-			fullPath: p
-		}
-
-		if (s.isDirectory()) {
-			result[entry].children = await buildFolderTree(p);
-		}
-	}
-
-	return result;
-}
-
-// builds a tree object based on a file path
-async function buildFileTree(rootPath, fileFilter) {
-	let contents = (await readDir(rootPath)).filter(n => n !== '.' && n !== '..');
-	let result = {};
-
-	for (const item of contents) {
-		if ((await stat(path.join(rootPath, item))).isDirectory()) {
-			result[item] = await buildFileTree(path.join(rootPath, item), fileFilter);
-		} else {
-			if (fileFilter && !fileFilter(item)) continue;
-			result[item] = true;
-		}
-	}
-
-	return result;
-}
-
 async function getPaths(rootPath, prefix) {
 	let dirs = await readDir(rootPath);
 	dirs = dirs.filter(async n => n !== '.' && n !== '..' && await (lstat(path.join(rootPath, n)).isDirectory()));
@@ -133,8 +91,6 @@ async function getTempFilePath() {
 }
 
 export {
-	buildFolderTree,
-	buildFileTree,
 	getTempFilePath,
 	readDir,
 	lstat,
