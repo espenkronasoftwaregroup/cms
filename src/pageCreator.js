@@ -171,6 +171,19 @@ export class PageCreator {
 				if (isItem) {
 					const ejsPath = path.join(pageRootPath, itemName, 'content.ejs');
 					const mdPath = path.join(pageRootPath, itemName, 'content.md');
+					const dataPath = path.join(pageRootPath, itemName, 'data.json');
+
+					if (await canRead(dataPath)) {
+						try {
+							data.viewData.itemData = JSON.parse((await readFile(dataPath)).toString());
+						} catch (err) {
+							return {
+								status: 500,
+								contentType: 'text/plain',
+								content: `Failed to parse data at ${dataPath}\n${err.stack}`
+							}
+						}
+					}
 
 					if (itemContentTemplateString) {
 						try {
@@ -212,6 +225,7 @@ export class PageCreator {
 							}
 						}
 					}
+
 				} else {
 					for (const filename of contents.filter(n => n.endsWith('.md'))) {
 						const mdFilePath = path.join(pageRootPath, filename);

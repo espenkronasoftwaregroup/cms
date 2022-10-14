@@ -80,6 +80,11 @@ test('Items', async t => {
 	t.true(body2.includes('partial'), 'Should include text from partial template');
 	t.true(body2.includes('stuff item controller'), 'Body should include text from controller');
 
+	const body3 = await get(t, `http://localhost:${server.address().port}/stuff/item3`, 200);
+	console.log(body3)
+	t.true(body3.includes('stuff item controller'), 'Body should include text from controller');
+	t.true(body3.includes('{"data":"gloroius data"}'), 'Body should contain data from data.json');
+
 	server.close();
 	t.end();
 });
