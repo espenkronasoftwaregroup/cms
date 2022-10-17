@@ -169,6 +169,8 @@ export class PageCreator {
 				// and use that if it exits. If that does not exist, check for a content markdown file
 				// and render that as html instead.
 				if (isItem) {
+					const rootEjsContent = path.join(pageRootPath, 'content.ejs');
+					const rootMdContent = path.join(pageRootPath, 'content.md');
 					const ejsPath = path.join(pageRootPath, itemName, 'content.ejs');
 					const mdPath = path.join(pageRootPath, itemName, 'content.md');
 					const dataPath = path.join(pageRootPath, itemName, 'data.json');
@@ -215,6 +217,32 @@ export class PageCreator {
 					else if (await canRead(mdPath)) {
 						try {
 							const md = await readFile(mdPath);
+							const html = this.md.render(md.toString());
+							data.viewData.itemContent = html;
+						} catch (err) {
+							return {
+								status: 500,
+								contentType: 'text/plain',
+								content: `Markdown at ${mdFilePath} exploded\n${err.stack}`
+							}
+						}
+					}
+					else if (await canRead(rootEjsContent)) {
+						try {
+							const template = await readFile(rootEjsContent);
+							const html = ejs.render(template.toString(), {...data}, { views: [this.opts.partialsPath]});
+							data.viewData.itemContent = html;
+						} catch (err) {
+							return {
+								status: 500,
+								contentType: 'text/plain',
+								content: `EJS at ${ejsPath} exploded\n${err.stack}`
+							}
+						}
+					}
+					else if (await canRead(rootMdContent)) {
+						try {
+							const md = await readFile(rootMdContent);
 							const html = this.md.render(md.toString());
 							data.viewData.itemContent = html;
 						} catch (err) {

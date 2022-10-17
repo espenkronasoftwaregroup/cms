@@ -81,13 +81,27 @@ test('Items', async t => {
 	t.true(body2.includes('stuff item controller'), 'Body should include text from controller');
 
 	const body3 = await get(t, `http://localhost:${server.address().port}/stuff/item3`, 200);
-	console.log(body3)
 	t.true(body3.includes('stuff item controller'), 'Body should include text from controller');
 	t.true(body3.includes('{"data":"gloroius data"}'), 'Body should contain data from data.json');
 
 	server.close();
 	t.end();
 });
+
+test('Item root content', async t => {
+	const app = express();
+	app.all('*', cmsMiddlewareFactory(options));
+
+	const server = app.listen();
+
+	const body = await get(t, `http://localhost:${server.address().port}/stuff`, 200);
+	t.true(body.includes('stuff item'), 'Body should include text from item root template');
+	t.true(body.includes('stuff item controller'), 'Body should include text from controller');
+	t.true(body.includes('root content'), 'Body should include content from root');
+
+	server.close();
+	t.end();
+})
 
 test('Shared content', async t => {
 	const app = express();
