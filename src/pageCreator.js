@@ -85,13 +85,13 @@ export class PageCreator {
 		let pageRootPath = null;
 		let isItem = false;
 		let itemName;
-
-		if (pagePath && this.pages[pagePath]) {
-			pageRootPath = this.pages[pagePath];
-		} else if (pagePath && this.items[pagePath]) {
+																			// remove first /	
+		if (pagePath && this.items[pagePath] && (path.basename(req.path) !== pagePath.substr(1) || !this.pages[pagePath])) {
 			pageRootPath = this.items[pagePath];
 			isItem = true;
 			itemName = path.basename(req.path);
+		} else if (pagePath && this.pages[pagePath]) {
+			pageRootPath = this.pages[pagePath];
 		}
 
 		if (pageRootPath) {

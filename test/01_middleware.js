@@ -101,7 +101,24 @@ test('Item root content', async t => {
 
 	server.close();
 	t.end();
-})
+});
+
+test('Page takes precedense over items at root level', async t => {
+	const app = express();
+	app.all('*', cmsMiddlewareFactory(options));
+
+	const server = app.listen();
+
+	const body = await get(t, `http://localhost:${server.address().port}/products/item1`, 200);
+	t.equal('products\r\nproducts/item1', body);
+
+	const body2 = await get(t, `http://localhost:${server.address().port}/products`, 200);
+	t.false(body2.includes('this should not be shown'));
+	t.equal('products page', body2);
+
+	server.close();
+	t.end();
+});
 
 test('Shared content', async t => {
 	const app = express();
