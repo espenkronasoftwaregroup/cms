@@ -202,3 +202,17 @@ test('Controller, cookies', async t => {
 	server.close();
 	t.end();
 });
+
+test('Global variables', async t => {
+	const app = express();
+	app.all('*', cmsMiddlewareFactory({...options, globals: { glory: 'halleluljah '}}));
+
+	const server = app.listen();
+
+	const response = await axios.get(`http://localhost:${server.address().port}/globals`);
+	t.equal(200, response.status, 'Response status should be 200');
+	t.equal('hej\r\nhalleluljah \r\npartial', response.data, 'Data should contain stuff from global variables');
+
+	server.close();
+	t.end();
+});

@@ -73,6 +73,7 @@ export class PageCreator {
 		let data = {
 			viewData: {
 				content: await this.getSharedContent(),
+				subcontent: {},
 				activePath: req.path,
 				query: req.query,
 				jsBundles: this.opts.jsBundles, // todo: these should not be here
@@ -189,7 +190,7 @@ export class PageCreator {
 
 					if (itemContentTemplateString) {
 						try {
-							data.viewData.itemContent = ejs.render(itemContentTemplateString, {...data}, { views: [this.opts.partialsPath]});
+							data.viewData.itemContent = ejs.render(itemContentTemplateString, {...data}, { views: [this.opts.partialsPath], context: this.opts.globals || {}});
 						} catch (err) {
 							return {
 								status: 500,
@@ -204,7 +205,7 @@ export class PageCreator {
 					else if (await canRead(ejsPath)) {
 						try {
 							const template = await readFile(ejsPath);
-							const html = ejs.render(template.toString(), {...data}, { views: [this.opts.partialsPath]});
+							const html = ejs.render(template.toString(), {...data}, { views: [this.opts.partialsPath], context: this.opts.globals || {}});
 							data.viewData.itemContent = html;
 						} catch (err) {
 							return {
@@ -230,7 +231,7 @@ export class PageCreator {
 					else if (await canRead(rootEjsContent)) {
 						try {
 							const template = await readFile(rootEjsContent);
-							const html = ejs.render(template.toString(), {...data}, { views: [this.opts.partialsPath]});
+							const html = ejs.render(template.toString(), {...data}, { views: [this.opts.partialsPath], context: this.opts.globals || {}});
 							data.viewData.itemContent = html;
 						} catch (err) {
 							return {
@@ -282,7 +283,7 @@ export class PageCreator {
 					}
 
 					const templateString = (await readFile(path.join(pageRootPath,  'template.ejs'))).toString();
-					const html = ejs.render(templateString, data, { views });
+					const html = ejs.render(templateString, data, { views, context: this.opts.globals || {} });
 					result.content = html;
 				} catch (err) {
 					return {
@@ -299,7 +300,7 @@ export class PageCreator {
 		return {
 			status: 404,
 			contentType: 'text/html',
-			content: ejs.render(this.notFoundTemplate, data, { views: [this.opts.partialsPath] })
+			content: ejs.render(this.notFoundTemplate, data, { views: [this.opts.partialsPath], context: this.opts.globals || {} })
 		}
 	}
 }
