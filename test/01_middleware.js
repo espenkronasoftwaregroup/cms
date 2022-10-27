@@ -205,7 +205,10 @@ test('Controller, cookies', async t => {
 
 test('Global variables', async t => {
 	const app = express();
-	app.all('*', cmsMiddlewareFactory({...options, globals: { glory: 'halleluljah '}}));
+	app.all('*', (req, res, next) => {
+		req.globals = { glory: 'halleluljah '};
+		next();
+	}, cmsMiddlewareFactory({...options}));
 
 	const server = app.listen();
 
