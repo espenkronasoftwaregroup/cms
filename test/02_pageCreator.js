@@ -19,7 +19,7 @@ test('Page creator, override item content', async t => {
 		path: '/stuff/item1'
 	};
 	const newContent = '<h2>new shiny content</h2>';
-	const result = await pc.createPage(req, { itemContentHtmlString: newContent });
+	const result = await pc.createPage(req, { itemContentHtmlStrings: { content: newContent }});
 
 	t.assert(result, 'Result should not be null or undefined');
 	t.equal(result.status, 200, 'Status code should be 200');
@@ -35,7 +35,7 @@ test('Page creator, override item template', async t => {
 		path: '/stuff/item2'
 	};
 	const newContent = '<p><%= viewData.title %></p>';
-	const result = await pc.createPage(req, { itemContentTemplateString: newContent });
+	const result = await pc.createPage(req, { itemContentTemplateStrings: { content: newContent }});
 
 	t.assert(result, 'Result should not be null or undefined');
 	t.equal(result.status, 200, 'Status code should be 200');
@@ -97,4 +97,4 @@ test('Page create should pass the controller its own path', async t => {
 	t.equal(result.contentType, 'text/plain', 'Content type should be text/plain');
 	t.assert(result.content, 'Content should be set');
 	t.equal(result.content, '/bar', 'Controller dynamic content should be the controller path');
-})
+});

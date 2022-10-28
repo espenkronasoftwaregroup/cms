@@ -1,9 +1,10 @@
 import { canRead, getPathsSync, getTempFilePath, readDir, readFile } from "./utils.js";
-import fs from 'fs';
+import fs, { readdir } from 'fs';
 import path from 'path';
 import ejs from 'ejs';
 import { pathToFileURL } from 'url';
 import MarkdownIt from "markdown-it";
+import { stringify } from "querystring";
 
 export class PageCreator {
 	constructor(opts) {
@@ -64,7 +65,7 @@ export class PageCreator {
 	 * @param {string} opts.customPath A custom path used for controller/template/content look up. If not supplied req.path will be used
 	 * @returns {*} Response data
 	 */
-	async createPage(req, {customPath, itemContentTemplateString, itemContentHtmlString, itemControllerJsString} = {}) {
+	async createPage(req, {customPath, itemContentTemplateStrings, itemContentHtmlStrings, itemControllerJsString} = {}) {
 		const result = {
 			status: 200,
 			contentType: 'text/html'
@@ -72,8 +73,8 @@ export class PageCreator {
 
 		let data = {
 			viewData: {
-				content: await this.getSharedContent(),
-				subcontent: {},
+				sharedContent: await this.getSharedContent(),
+				content: {},
 				activePath: req.path,
 				query: req.query,
 				jsBundles: this.opts.jsBundles, // todo: these should not be here
@@ -85,8 +86,8 @@ export class PageCreator {
 		let pageRootPath = null;
 		let isItem = false;
 		let itemName;
-																			// remove first /	
-		if (pagePath && this.items[pagePath] && (path.basename(req.path) !== pagePath.substr(1) || !this.pages[pagePath])) {
+		
+		if ((this.items[req.path] && path.basename(req.path) !== pagePath.substr(1)) || (pagePath && this.items[pagePath] && (!this.pages[pagePath] ))) {
 			pageRootPath = this.items[pagePath];
 			isItem = true;
 			itemName = path.basename(req.path);
@@ -170,109 +171,91 @@ export class PageCreator {
 				// and use that if it exits. If that does not exist, check for a content markdown file
 				// and render that as html instead.
 				if (isItem) {
-					const rootEjsContent = path.join(pageRootPath, 'content.ejs');
-					const rootMdContent = path.join(pageRootPath, 'content.md');
-					const ejsPath = path.join(pageRootPath, itemName, 'content.ejs');
-					const mdPath = path.join(pageRootPath, itemName, 'content.md');
-					const dataPath = path.join(pageRootPath, itemName, 'data.json');
+					let itemPath = path.join(pageRootPath, itemName);
 
-					if (await canRead(dataPath)) {
-						try {
-							data.viewData.itemData = JSON.parse((await readFile(dataPath)).toString());
-						} catch (err) {
-							return {
-								status: 500,
-								contentType: 'text/plain',
-								content: `Failed to parse data at ${dataPath}\n${err.stack}`
-							}
-						}
+					// if this cannot be read we might be at root level
+					if (!await canRead(itemPath)) {
+						itemPath = pageRootPath;
 					}
 
-					if (itemContentTemplateString) {
-						try {
-							data.viewData.itemContent = ejs.render(itemContentTemplateString, {...data}, { views: [this.opts.partialsPath], context: req.globals || {}});
-						} catch (err) {
-							return {
-								status: 500,
-								contentType: 'text/plain',
-								content: `EJS at ${ejsPath} exploded\n${err.stack}`
-							}
-						}
-					}
-					else if (itemContentHtmlString) {
-						data.viewData.itemContent = itemContentHtmlString;
-					}
-					else if (await canRead(ejsPath)) {
-						try {
-							const template = await readFile(ejsPath);
-							const html = ejs.render(template.toString(), {...data}, { views: [this.opts.partialsPath], context: req.globals || {}});
-							data.viewData.itemContent = html;
-						} catch (err) {
-							return {
-								status: 500,
-								contentType: 'text/plain',
-								content: `EJS at ${ejsPath} exploded\n${err.stack}`
-							}
-						}
-					}
-					else if (await canRead(mdPath)) {
-						try {
-							const md = await readFile(mdPath);
-							const html = this.md.render(md.toString());
-							data.viewData.itemContent = html;
-						} catch (err) {
-							return {
-								status: 500,
-								contentType: 'text/plain',
-								content: `Markdown at ${mdFilePath} exploded\n${err.stack}`
-							}
-						}
-					}
-					else if (await canRead(rootEjsContent)) {
-						try {
-							const template = await readFile(rootEjsContent);
-							const html = ejs.render(template.toString(), {...data}, { views: [this.opts.partialsPath], context: req.globals || {}});
-							data.viewData.itemContent = html;
-						} catch (err) {
-							return {
-								status: 500,
-								contentType: 'text/plain',
-								content: `EJS at ${ejsPath} exploded\n${err.stack}`
-							}
-						}
-					}
-					else if (await canRead(rootMdContent)) {
-						try {
-							const md = await readFile(rootMdContent);
-							const html = this.md.render(md.toString());
-							data.viewData.itemContent = html;
-						} catch (err) {
-							return {
-								status: 500,
-								contentType: 'text/plain',
-								content: `Markdown at ${mdFilePath} exploded\n${err.stack}`
-							}
-						}
-					}
+					const itemContents = await readDir(itemPath);
 
-				} else {
-					for (const filename of contents.filter(n => n.endsWith('.md'))) {
-						const mdFilePath = path.join(pageRootPath, filename);
-						try {
-							const md = await readFile(mdFilePath);
-							const html = this.md.render(md.toString());
-							
-							if (!data.viewData.content) data.viewData.content = {};
+					// md and json files must be read before template files as the templates might reference those.
+					itemContents.sort((a, b) => {
+						if (a.endsWith('.ejs') && !b.endsWith('.ejs')) {
+							return 1;
+						} else if (!a.endsWith('.ejs') && b.endsWith('.ejs')) {
+							return -1;
+						} else {
+							return 0;
+						}
+					});
 
-							data.viewData.content[filename.replace('.md', '')] = html;
-						} catch (err) {
-							return {
-								status: 500,
-								contentType: 'text/plain',
-								content: `Markdown at ${mdFilePath} exploded\n${err.stack}`
+					for (const fileName of itemContents) {
+						if (fileName === 'template.ejs') continue;
+						if (!['.md', '.json', '.ejs'].includes(path.extname(fileName))) continue;
+
+						const fileNameWithoutExt = fileName.replace(path.extname(fileName), '');
+
+						// injected template, use that instead of template on disk
+						if (itemContentTemplateStrings?.[fileNameWithoutExt]) {
+							try {
+								data.viewData.content[fileNameWithoutExt] = ejs.render(itemContentTemplateStrings?.[fileNameWithoutExt], {...data}, { views: [this.opts.partialsPath], context: req.globals || {}});
+								continue;
+							} catch (err) {
+								return {
+									status: 500,
+									contentType: 'text/plain',
+									content: `Injected EJS ${fileNameWithoutExt} exploded\n${err.stack}`
+								}
 							}
 						}
-					}
+
+						if (itemContentHtmlStrings?.[fileNameWithoutExt]) {
+							data.viewData.content[fileNameWithoutExt] = itemContentHtmlStrings[fileNameWithoutExt];
+							continue;
+						}
+	
+						const fp = path.join(itemPath, fileName);
+						if (await canRead(fp)) {
+							let fileContent;
+	
+							try {
+								fileContent = await readFile(fp);
+							} catch (err) {
+								return {
+									status: 500,
+									contentType: 'text/plain',
+									content: `Failed to read file ${fileName}, : ${err.message}\n${err.stack}`
+								}
+							}
+	
+							if (fileName.endsWith('.md')) {
+								try {
+									const html = this.md.render(fileContent.toString());
+									data.viewData.content[fileNameWithoutExt] = html;
+								} catch (err) {
+									return {
+										status: 500,
+										contentType: 'text/plain',
+										content: `Failed to render markdown file ${fileName}, : ${err.message}\n${err.stack}`
+									}
+								}
+							} else if (fileName.endsWith('.json')) {
+								data.viewData.content[fileNameWithoutExt] = JSON.parse(fileContent.toString());
+							} else if (fileName.endsWith('.ejs')) {
+								try {
+									data.viewData.content[fileNameWithoutExt] = ejs.render(fileContent.toString(), {...data}, { views: [this.opts.partialsPath], context: req.globals || {}});
+								} catch (err) {
+									return {
+										status: 500,
+										contentType: 'text/plain',
+										content: `EJS at ${fp} exploded\n${err.stack}`
+									}
+								}
+							}
+						}
+					} 
 				} 
 
 				try {

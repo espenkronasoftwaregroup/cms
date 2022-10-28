@@ -71,7 +71,7 @@ test('Items', async t => {
 	const server = app.listen();
 
 	const body = await get(t, `http://localhost:${server.address().port}/stuff/item1`, 200);
-	t.true(body.includes('stuff item'), 'Body should include text from item root template');
+	//t.true(body.includes('stuff item'), 'Body should include text from item root template');
 	t.true(body.includes('<h2>item1</h2>'), 'Body should include markdown rendered to html');
 	t.true(body.includes('stuff item controller'), 'Body should include text from controller');
 
