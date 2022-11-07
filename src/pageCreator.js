@@ -96,13 +96,14 @@ export class PageCreator {
 		}
 
 		if (pageRootPath) {
-			req.pageRootPath = pageRootPath;
+			data.viewData.pageRootPath = pageRootPath;
 			const contents = await readDir(pageRootPath); // most of the disk reads from this point on could be cached
 
 			if (contents.includes('controller.mjs')) {
 				const controllerPath = path.join(pageRootPath, 'controller.mjs');
 				let module;
 				
+				// load controller
 				if (itemControllerJsString) {
 					// because of reasons javascript is a lot easier to load from disk, so write that shit to file first.
 					try {
@@ -122,12 +123,9 @@ export class PageCreator {
 
 				let controllerResult;
 
+				// execute controller
 				try {
-					if (customPath) {
-						controllerResult = await module.controller({...req, path: customPath }, { ...this.opts, pageCreator: this, controllerPath: pagePath });
-					} else {
-						controllerResult = await module.controller(req, { ...this.opts, pageCreator: this, controllerPath: pagePath });
-					}
+					controllerResult = await module.controller({...req, path: customPath || req.path}, { ...this.opts, pageCreator: this, controllerPath: pagePath });
 				} catch (err) {
 					return {
 						status: 500,
@@ -140,13 +138,13 @@ export class PageCreator {
 					result.cookie = controllerResult.cookie;
 				}
 
+				if (controllerResult.headers) {
+					result.headers = controllerResult.headers;
+				}
+
 				if (controllerResult.redirect) { 
 					result.redirect = controllerResult.redirect;
 					return result;
-				}
-
-				if (controllerResult.headers) {
-					result.headers = controllerResult.headers;
 				}
 
 				if (controllerResult.raw) {

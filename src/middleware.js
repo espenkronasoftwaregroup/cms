@@ -22,15 +22,15 @@ function cmsMiddlewareFactory(opts) {
 			} 
 		}
 
-		if (result.redirect) {
-			res.redirect(result.redirect);
-			return;
-		}
-
 		if (result.headers) {
 			for (const [key, value] of Object.entries(result.headers)) {
 				res.setHeader(key, value);
 			}
+		}
+
+		if (result.redirect) {
+			res.redirect(result.redirect);
+			return;
 		}
 
 		res.status(result.status);
