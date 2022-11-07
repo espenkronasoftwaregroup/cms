@@ -73,16 +73,16 @@ test('Items', async t => {
 	const body = await get(t, `http://localhost:${server.address().port}/stuff/item1`, 200);
 	//t.true(body.includes('stuff item'), 'Body should include text from item root template');
 	t.true(body.includes('<h2>item1</h2>'), 'Body should include markdown rendered to html');
-	t.true(body.includes('stuff item controller'), 'Body should include text from controller');
+	t.true(body.includes('stuff item controller'), 'Item 1 body should include text from controller');
 
 	const body2 = await get(t, `http://localhost:${server.address().port}/stuff/item2`, 200);
 	t.true(body2.includes('item 2'), 'Should include text from item2 template');
 	t.true(body2.includes('partial'), 'Should include text from partial template');
-	t.true(body2.includes('stuff item controller'), 'Body should include text from controller');
+	t.true(body2.includes('stuff item controller'), 'Item 2 body should include text from controller');
 
 	const body3 = await get(t, `http://localhost:${server.address().port}/stuff/item3`, 200);
 	t.true(body3.includes('stuff item controller'), 'Body should include text from controller');
-	t.true(body3.includes('{"data":"gloroius data"}'), 'Body should contain data from data.json');
+	t.true(body3.includes('{"key":"gloroius data"}'), 'Item 3 body should contain data from data.json');
 
 	server.close();
 	t.end();
@@ -232,6 +232,20 @@ test('Global variables', async t => {
 	const response = await axios.get(`http://localhost:${server.address().port}/globals`);
 	t.equal(200, response.status, 'Response status should be 200');
 	t.equal('hej\r\nhalleluljah \r\npartial', response.data, 'Data should contain stuff from global variables');
+
+	server.close();
+	t.end();
+});
+
+test('Page with data content', async t => {
+	const app = express();
+	app.all('*', cmsMiddlewareFactory({...options}));
+
+	const server = app.listen();
+
+	const response = await axios.get(`http://localhost:${server.address().port}/datapage`);
+	t.equal(200, response.status, 'Response status should be 200');
+	t.equal('content', response.data, 'Template should print data from json file');
 
 	server.close();
 	t.end();
