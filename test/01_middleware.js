@@ -129,8 +129,17 @@ test('Shared content', async t => {
 
 	const server = app.listen();
 
+	// page
 	const body = await get(t, `http://localhost:${server.address().port}/things`, 200);
 	t.true(body.includes('<h2>some shared info</h2>'), 'Body should include markdown-to-html from sharedInfo.md');
+	t.true(body.includes('<p>Mf quote</p>'), 'Body should contain shared template content');
+	t.true(body.includes('{"data":"data is the best"}'), 'Body should include shared data content');
+
+	// item
+	const body2 = await get(t, `http://localhost:${server.address().port}/baz/boz`, 200);
+	t.true(body2.includes('<h2>some shared info</h2>'), 'Body2 should include markdown-to-html from sharedInfo.md');
+	t.true(body2.includes('<p>Mf quote</p>'), 'Body2 should contain shared template content');
+	t.true(body2.includes('{"data":"data is the best"}'), 'Body2 should include shared data content');
 
 	server.close();
 	t.end();

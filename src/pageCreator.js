@@ -1,10 +1,9 @@
-import { canRead, getPathsSync, getTempFilePath, readDir, readFile } from "./utils.js";
-import fs, { readdir } from 'fs';
+import { canRead, getPathsSync, getTempFilePath, readDir, readDirWithTypes, readFile } from "./utils.js";
+import fs from 'fs';
 import path from 'path';
 import ejs from 'ejs';
 import { pathToFileURL } from 'url';
 import MarkdownIt from "markdown-it";
-import { stringify } from "querystring";
 
 export class PageCreator {
 	constructor(opts) {
@@ -13,6 +12,8 @@ export class PageCreator {
 		this.items = getPathsSync(this.opts.itemsPath, '', ['items']);
 		this.notFoundTemplate = fs.readFileSync(this.opts.notFoundTemplatePath).toString();
 		this.md = new MarkdownIt();
+
+		// här behöver man kanske lägga in fs.watch för att ladda om pages och items när filer förändras på disk... eller iaf när dom skapas/tas bort
 	}
 
 	async getPagePath(urlPath) {
@@ -40,8 +41,36 @@ export class PageCreator {
 		return pagePath;
 	}
 
+	async buildSharedContentTree(fsPath) {
+		const result = {};
+
+		if (!fsPath) return result;
+
+		const items = await readDirWithTypes(fsPath);
+
+		for (const item of items) {
+			if (item.isDirectory()) {
+				result[item.name] = await this.buildSharedContentTree(path.join(fsPath, item.name));
+			} else {
+				if (item.name.endsWith('.md')) {
+					const data = await readFile(path.join(fsPath, item.name));
+					const html = this.md.render(data.toString());
+					result[item.name.replace('.md', '')] = html;
+				} else if (item.name.endsWith('.ejs')) {
+					const data = await readFile(path.join(fsPath, item.name));
+					result[item.name.replace('.ejs', '')] = ejs.render(data.toString(), {}, { views: [this.opts.partialsPath] });
+				} else if (item.name.endsWith('.json')) {
+					const data = await readFile(path.join(fsPath, item.name));
+					result[item.name.replace('.json', '')] = JSON.parse(data);
+				}
+			}
+		}
+
+		return result;
+	}
+
 	// todo: cache this
-	async getSharedContent() {
+	/*async getSharedContent() {
 		const result = {};
 
 		if (!this.opts?.sharedContentPath) return result;
@@ -57,7 +86,7 @@ export class PageCreator {
 		}
 
 		return result;
-	}
+	} */
 
 	/**
 	 * Compile a content, content type and status code for a request
@@ -73,7 +102,7 @@ export class PageCreator {
 
 		let data = {
 			viewData: {
-				sharedContent: await this.getSharedContent(),
+				sharedContent: await this.buildSharedContentTree(this.opts.sharedContentPath),
 				content: {},
 				activePath: req.path,
 				query: req.query,

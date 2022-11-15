@@ -21,6 +21,15 @@ function readDir(dirPath) {
 	})
 }
 
+function readDirWithTypes(dirPath) {
+	return new Promise((resolve, reject) => {
+		fs.readdir(dirPath, { withFileTypes: true }, (err, data) => {
+			if (err) reject(err);
+			else resolve(data);
+		});
+	});
+}
+
 function lstat(fsPath) {
 	return new Promise((resolve, reject) => {
 		fs.lstat(fsPath, (err, data) => {
@@ -93,6 +102,7 @@ async function getTempFilePath() {
 export {
 	getTempFilePath,
 	readDir,
+	readDirWithTypes,
 	lstat,
 	stat,
 	readFile,
