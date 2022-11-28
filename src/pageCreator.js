@@ -176,6 +176,15 @@ export class PageCreator {
 					return result;
 				}
 
+				// render the not found template without redirect
+				if (controllerResult.softNotFound) {
+					return {
+						status: 404,
+						contentType: 'text/html',
+						content: ejs.render(this.notFoundTemplate, data, { views: [this.opts.partialsPath], context: req.globals || {} })
+					}
+				}
+
 				if (controllerResult.raw) {
 					result.status = controllerResult.raw.status || 200;
 					result.contentType = controllerResult.raw.type || 'text/plain';

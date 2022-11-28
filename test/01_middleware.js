@@ -259,3 +259,17 @@ test('Page with data content', async t => {
 	server.close();
 	t.end();
 });
+
+test('When controller sets the softNotFound the not found template should be rendered and returned', async t => {
+	const app = express();
+	app.all('*', cmsMiddlewareFactory({...options}));
+
+	const server = app.listen();
+
+		const response = await axios.get(`http://localhost:${server.address().port}/softNotFound`, { maxRedirects: 0, validateStatus: () => true });
+	t.equal(404, response.status, 'Response status should be 404');
+	t.equal('not found', response.data, 'Response should equal the contents of the not found template');
+
+	server.close();
+	t.end();
+});
