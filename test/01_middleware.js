@@ -164,6 +164,25 @@ test('Controller redirct', async t => {
 	t.end();
 });
 
+test('Controller redirct moved', async t => {
+	const app = express();
+	app.all('*', cmsMiddlewareFactory(options));
+
+	const server = app.listen();
+
+	const body = await get(t, `http://localhost:${server.address().port}/redirectMoved`, 301, false);
+	t.equal(body, 'Moved Permanently. Redirecting to /home', 'Body should indicate where to redirect');
+
+	// redirects to /home
+	const body2 = await get(t, `http://localhost:${server.address().port}/redirectMoved`);
+	t.true(body2.includes('title: test'), 'Body should include text from both template and controller');
+	t.true(body2.includes('h1: hello cms'), 'Body should include text from both template and controller');
+	t.true(body2.includes('partial: partial'), 'Body should include text from partial template');
+
+	server.close();
+	t.end();
+});
+
 test('Controller headers', async t => {
 	const app = express();
 	app.all('*', cmsMiddlewareFactory(options));

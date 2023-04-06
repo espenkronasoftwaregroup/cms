@@ -176,6 +176,11 @@ export class PageCreator {
 					return result;
 				}
 
+				if (controllerResult.redirectMoved) {
+					result.redirectMoved = controllerResult.redirectMoved;
+					return result;
+				}
+
 				// render the not found template without redirect
 				if (controllerResult.softNotFound) {
 					return {

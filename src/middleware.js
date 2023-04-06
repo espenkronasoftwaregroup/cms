@@ -33,6 +33,11 @@ function cmsMiddlewareFactory(opts) {
 			return;
 		}
 
+		if (result.redirectMoved) {
+			res.redirect(301, result.redirectMoved);
+			return;
+		}
+
 		res.status(result.status);
 		res.setHeader('Content-Type', result.contentType);
 		res.end(result.content);
