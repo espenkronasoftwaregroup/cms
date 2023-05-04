@@ -69,25 +69,6 @@ export class PageCreator {
 		return result;
 	}
 
-	// todo: cache this
-	/*async getSharedContent() {
-		const result = {};
-
-		if (!this.opts?.sharedContentPath) return result;
-
-		const files = await readDir(this.opts.sharedContentPath);
-	
-		for (const file of files) {
-			if (!file.endsWith('.md')) continue;
-
-			const data = await readFile(path.join(this.opts.sharedContentPath, file));
-			const html = this.md.render(data.toString());
-			result[file.replace('.md', '')] = html;
-		}
-
-		return result;
-	} */
-
 	/**
 	 * Compile a content, content type and status code for a request
 	 * @param {*} req the express request object

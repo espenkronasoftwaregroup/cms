@@ -1,10 +1,31 @@
 # ESG-CMS middleware
 
 ## What and why
-ESG-CMS is a file based cms middleware for express (or similar) based on ejs templates and markdown. The goal of this project is to be an extremely light weight, highly customizable cms with as few dependencies as possible. This project is not meant to be a drop in wordpress replacement or such, as it requires basic html/css/js/node skills to use. For example no "admin area" is included in this project. The user will either have to code their own or edit the files on disk.
+ESG-CMS is a middleware for express (or similare) is a router which primary focus is to map urls to files on disk while also providing some basic cms-like functionality. This project is not meant to be a drop in wordpress replacement or such, as it requires basic html/css/js/node skills to use.
 
 ## How does it work
-The cms is centered around two concepts, "pages" and "items". A page consists of an optional controller and a template and acts as a "regular" page. It is given a route based on the names on the folders its placed in. An item or item type is a page acting as a template for displaying many similar items, such as products or blog posts.
+The middleware is centered around the concepts of "pages" and items". A page or item consists of a template and an (optional) controller, that is used to provide the template with data. What differs is that items can have sub-content, in the form of ejs or md files, that will be provided automatically during rendering. Items can be thought of things that should be presented in a simliar manner, such as blog posts. The root of the item directory will provide the basis of the presentation while the actual content will come from files in the subdirectory. Example:
+
+```
+items
+│   │
+│   └───blog
+│       │   template.ejs
+|       |   controller.js
+|       |
+│       └───i_love_cats
+│       │   content.ejs
+|       |
+│       └───cats_are_the_best
+|           content.md
+```
+
+If a request is made to yourdomain.com/blog/i_love_cats the contents of content.ejs will be rendered in the slot specified in the items/blog/template.ejs, aided by the data provided by items/blog/controller.js.
+
+## Example usage
+
+
+
 
 The middleware takes a couple of paths as argument:
 ```
@@ -22,29 +43,14 @@ Use item root controller then root template
 If item has a content.ejs template file load that into viewData.content otherwise load content.md into viewdata.content
 if data.json exists, load that into viewData.data and pass to template rendering
 
-## Example usage
+## Examples
 
-Have a folder structure that looks like this:
-```
-data
-│
-└───items
-│   │
-│   └───blog
-│       │   template.ejs
-|       |
-│       └───i_love_cats
-│       │   content.ejs
-|       |
-│       └───cats_are_the_best
-|           content.md
-│   
-└───pages
-|   |
-│   └───cats
-|       controller.js
-|       template.ejs
-|
-└───partials
-    head.ejs
-```
+See code in examples dir for basic usage.
+
+## Parameters
+| Name               | Description |
+| -----------        | ----------- |
+| itemsPath          | Title       |
+| notFoundTemplate   | Text        |
+
+## Return values
