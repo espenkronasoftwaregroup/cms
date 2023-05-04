@@ -1,0 +1,19 @@
+{
+  "name": "cms-example",
+  "version": "1.0.0",
+  "description": "Example project showing usage of the esg-cms package",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "DjKlazaplaza",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "body-parser": "1.20.2",
+    "cms": "github:espenkronasoftwaregroup/cms#327468a42575daae16f62b55dfb226fd6d78ac4d",
+    "cookie-parser": "1.4.6",
+    "express": "4.18.2",
+    "sass": "1.62.1"
+  }
+}
