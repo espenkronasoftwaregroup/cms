@@ -5,6 +5,8 @@ import ejs from 'ejs';
 import { pathToFileURL } from 'url';
 import MarkdownIt from "markdown-it";
 
+const diskCache = {pagePath: {}, sharedContent: {}};
+
 export class PageCreator {
 	constructor(opts) {
 		this.opts = opts;
@@ -17,6 +19,9 @@ export class PageCreator {
 	}
 
 	async getPagePath(urlPath) {
+
+		if (diskCache.pagePath[urlPath]) return diskCache.pagePath[urlPath];
+
 		let pagePath = urlPath;
 
 		while (pagePath !== '') {
@@ -37,6 +42,8 @@ export class PageCreator {
 				pagePath = this.opts.rootPagePath;
 			}
 		}
+
+		diskCache.pagePath[urlPath] = pagePath;
 
 		return pagePath;
 	}
@@ -69,25 +76,6 @@ export class PageCreator {
 		return result;
 	}
 
-	// todo: cache this
-	/*async getSharedContent() {
-		const result = {};
-
-		if (!this.opts?.sharedContentPath) return result;
-
-		const files = await readDir(this.opts.sharedContentPath);
-	
-		for (const file of files) {
-			if (!file.endsWith('.md')) continue;
-
-			const data = await readFile(path.join(this.opts.sharedContentPath, file));
-			const html = this.md.render(data.toString());
-			result[file.replace('.md', '')] = html;
-		}
-
-		return result;
-	} */
-
 	/**
 	 * Compile a content, content type and status code for a request
 	 * @param {*} req the express request object
@@ -100,9 +88,18 @@ export class PageCreator {
 			contentType: 'text/html'
 		}
 
+		let sharedContent;
+
+		if (diskCache.sharedContent[this.opts.sharedContentPath]) {
+			sharedContent = diskCache.sharedContent[this.opts.sharedContentPath];
+		} else {
+			sharedContent = await this.buildSharedContentTree(this.opts.sharedContentPath);
+			diskCache.sharedContent[this.opts.sharedContentPath] = sharedContent;
+		}
+
 		let data = {
 			viewData: {
-				sharedContent: await this.buildSharedContentTree(this.opts.sharedContentPath),
+				sharedContent,
 				content: {},
 				activePath: req.path,
 				query: req.query,
@@ -111,7 +108,7 @@ export class PageCreator {
 			}
 		};
 
-		const pagePath = await this.getPagePath(customPath || req.path);
+		let pagePath = await this.getPagePath(customPath || req.path);
 		let pageRootPath = null;
 		let isItem = false;
 		let itemName;
@@ -126,7 +123,13 @@ export class PageCreator {
 
 		if (pageRootPath) {
 			data.viewData.pageRootPath = pageRootPath;
-			const contents = await readDir(pageRootPath); // most of the disk reads from this point on could be cached
+			let contents;
+
+			if (diskCache[pageRootPath]) {
+				contents = diskCache[pageRootPath];
+			} else {
+				contents = await readDir(pageRootPath);
+			}
 
 			if (contents.includes('controller.mjs')) {
 				const controllerPath = path.join(pageRootPath, 'controller.mjs');
@@ -221,7 +224,14 @@ export class PageCreator {
 					}
 				}
 
-				const itemContents = await readDir(contentPath);
+				let itemContents;
+
+				if (diskCache[contentPath]) {
+					itemContents = diskCache[contentPath];
+				} else {
+					itemContents = await readDir(contentPath);
+					diskCache[contentPath] = itemContents;
+				}
 
 				// md and json files must be read before template files as the templates might reference those.
 				itemContents.sort((a, b) => {
@@ -260,19 +270,26 @@ export class PageCreator {
 					}
 
 					const fp = path.join(contentPath, fileName);
-					if (await canRead(fp)) {
-						let fileContent;
+					let fileContent;
 
-						try {
-							fileContent = await readFile(fp);
-						} catch (err) {
-							return {
-								status: 500,
-								contentType: 'text/plain',
-								content: `Failed to read file ${fileName}, : ${err.message}\n${err.stack}`
+					if (diskCache[fp]) {
+						fileContent = diskCache[fp];
+					} else {
+						if (await canRead(fp)) {
+							try {
+								fileContent = await readFile(fp);
+								diskCache[fp] = fileContent;
+							} catch (err) {
+								return {
+									status: 500,
+									contentType: 'text/plain',
+									content: `Failed to read file ${fileName}, : ${err.message}\n${err.stack}`
+								}
 							}
 						}
+					}
 
+					if (fileContent) {
 						if (fileName.endsWith('.md')) {
 							try {
 								const html = this.md.render(fileContent.toString());
@@ -298,8 +315,7 @@ export class PageCreator {
 							}
 						}
 					}
-				} 
-				
+				}
 
 				try {
 					const views = [pageRootPath, this.opts.partialsPath];
@@ -308,7 +324,16 @@ export class PageCreator {
 						views.push(path.join(pageRootPath, itemName));
 					}
 
-					const templateString = (await readFile(path.join(pageRootPath,  'template.ejs'))).toString();
+					const templatePath = path.join(pageRootPath,  'template.ejs');
+					let templateString;
+
+					if (diskCache[templatePath]) {
+						templateString = diskCache[templatePath];
+					} else {
+						templateString = (await readFile(path.join(pageRootPath,  'template.ejs'))).toString();
+						diskCache[templatePath] = templateString;
+					}
+
 					const html = ejs.render(templateString, data, { views, context: req.globals || {} });
 					result.content = html;
 				} catch (err) {
