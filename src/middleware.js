@@ -40,7 +40,12 @@ function cmsMiddlewareFactory(opts) {
 
 		res.status(result.status);
 		res.setHeader('Content-Type', result.contentType);
-		res.end(result.content);
+
+		if (result.contentStream) {
+			result.contentStream.pipe(res);
+		} else {
+			res.end(result.content);
+		}
 	}
 }
 

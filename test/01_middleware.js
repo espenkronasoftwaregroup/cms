@@ -285,9 +285,25 @@ test('When controller sets the softNotFound the not found template should be ren
 
 	const server = app.listen();
 
-		const response = await axios.get(`http://localhost:${server.address().port}/softNotFound`, { maxRedirects: 0, validateStatus: () => true });
+	const response = await axios.get(`http://localhost:${server.address().port}/softNotFound`, { maxRedirects: 0, validateStatus: () => true });
 	t.equal(404, response.status, 'Response status should be 404');
 	t.equal('not found', response.data, 'Response should equal the contents of the not found template');
+
+	server.close();
+	t.end();
+});
+
+test('Returning a contentStream', async t => {
+	const app = express();
+	app.all('*', cmsMiddlewareFactory({...options}));
+
+	const server = app.listen();
+
+	const response = await axios.get(`http://localhost:${server.address().port}/contentStream`, { maxRedirects: 0, validateStatus: () => true });
+
+	t.equal(response.status, 200, 'Response status should be 200');
+	t.equal(response.headers['content-type'], 'text/javascript', 'Response type should be text/javascript');
+	t.equal(response.data.length, 248, 'Response data length should be the same as test/data/01/pages/contentStream/controller.mjs file');
 
 	server.close();
 	t.end();

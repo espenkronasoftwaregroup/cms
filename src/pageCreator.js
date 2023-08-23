@@ -197,6 +197,7 @@ export class PageCreator {
 					result.status = controllerResult.raw.status || 200;
 					result.contentType = controllerResult.raw.type || 'text/plain';
 					result.content = controllerResult.raw.content;
+					result.contentStream = controllerResult.raw.contentStream;
 					return result;
 				} else if (!contents.includes('template.ejs')) {
 					// if there is no template the content type must be raw otherwise we dont know how to render
