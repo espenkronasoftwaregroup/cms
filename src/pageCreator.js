@@ -82,7 +82,7 @@ export class PageCreator {
 	 * @param {string} opts.customPath A custom path used for controller/template/content look up. If not supplied req.path will be used
 	 * @returns {*} Response data
 	 */
-	async createPage(req, {customPath, itemContentTemplateStrings, itemContentHtmlStrings, itemControllerJsString} = {}) {
+	async createPage(req, {customPath, itemControllerOverride, itemTemplateOverride, itemContentFilesOverrides} = {}) {
 		const result = {
 			status: 200,
 			contentType: 'text/html'
@@ -133,14 +133,14 @@ export class PageCreator {
 
 			if (contents.includes('controller.mjs')) {
 				const controllerPath = path.join(pageRootPath, 'controller.mjs');
-				let module;
+				let module = await import(pathToFileURL(controllerPath));
 				
-				// load controller
-				if (itemControllerJsString) {
+				// load controller from override
+				if (itemControllerOverride) {
 					// because of reasons javascript is a lot easier to load from disk, so write that shit to file first.
 					try {
 						const tmpfile = await getTempFilePath();
-						fs.writeFileSync(tmpfile, itemControllerJsString, 'utf-8');
+						fs.writeFileSync(tmpfile, itemControllerOverride, 'utf-8');
 						module = await import(pathToFileURL(tmpfile));
 					} catch (err) {
 						return {
@@ -227,6 +227,7 @@ export class PageCreator {
 
 				let itemContents;
 
+				// load filenames from cache if possible
 				if (diskCache[contentPath]) {
 					itemContents = diskCache[contentPath];
 				} else {
@@ -251,34 +252,17 @@ export class PageCreator {
 
 					const fileNameWithoutExt = fileName.replace(path.extname(fileName), '');
 
-					// injected template, use that instead of template on disk
-					if (itemContentTemplateStrings?.[fileNameWithoutExt]) {
-						try {
-							data.viewData.content[fileNameWithoutExt] = ejs.render(itemContentTemplateStrings?.[fileNameWithoutExt], {...data}, { views: [this.opts.partialsPath], context: req.globals || {}});
-							continue;
-						} catch (err) {
-							return {
-								status: 500,
-								contentType: 'text/plain',
-								content: `Injected EJS ${fileNameWithoutExt} exploded\n${err.stack}`
-							}
-						}
-					}
-
-					if (itemContentHtmlStrings?.[fileNameWithoutExt]) {
-						data.viewData.content[fileNameWithoutExt] = itemContentHtmlStrings[fileNameWithoutExt];
-						continue;
-					}
-
 					const fp = path.join(contentPath, fileName);
 					let fileContent;
 
-					if (diskCache[fp]) {
+					if (itemContentFilesOverrides?.[fileName]) {
+						fileContent = itemContentFilesOverrides?.[fileName];
+					} else if (diskCache[fp]) {
 						fileContent = diskCache[fp];
 					} else {
 						if (await canRead(fp)) {
 							try {
-								fileContent = await readFile(fp);
+								fileContent = (await readFile(fp)).toString();
 								diskCache[fp] = fileContent;
 							} catch (err) {
 								return {
@@ -293,7 +277,7 @@ export class PageCreator {
 					if (fileContent) {
 						if (fileName.endsWith('.md')) {
 							try {
-								const html = this.md.render(fileContent.toString());
+								const html = this.md.render(fileContent);
 								data.viewData.content[fileNameWithoutExt] = html;
 							} catch (err) {
 								return {
@@ -328,7 +312,9 @@ export class PageCreator {
 					const templatePath = path.join(pageRootPath,  'template.ejs');
 					let templateString;
 
-					if (diskCache[templatePath]) {
+					if (isItem && itemTemplateOverride) {
+						templateString = itemTemplateOverride;
+					} else if (diskCache[templatePath]) {
 						templateString = diskCache[templatePath];
 					} else {
 						templateString = (await readFile(path.join(pageRootPath,  'template.ejs'))).toString();

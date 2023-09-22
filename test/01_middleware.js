@@ -1,4 +1,5 @@
-import test from 'tape';
+import test from 'node:test';
+import assert from "node:assert/strict";
 import {cmsMiddlewareFactory} from '../src/index.js';
 import express from 'express';
 import path, {dirname} from 'path';
@@ -30,10 +31,11 @@ async function get(t, url, expectedStatusCode = 200, followRedirects = true) {
 		transformResponse: x => x // axios can get fucked. If the response is text/plain it SHOULD NOT BE PARSED!
 	});
 
-	t.equal(status, expectedStatusCode, `Request to ${url} should return ${expectedStatusCode} status code`);
+	assert(status, expectedStatusCode, `Request to ${url} should return ${expectedStatusCode} status code`);
 	const body = await response.data;
-	t.assert(body, 'Body should not be null or undefined');
-	t.notEqual(body, '', 'Body should not be an empty string');
+	assert.notEqual(body, null, 'Body should not be null');
+	assert.notEqual(body, undefined, 'Body should not be undefined');
+	assert.notEqual(body, '', 'Body should not be empty string');
 	return body;
 }
 
@@ -45,23 +47,22 @@ test('Pages', async t => {
 	const server = app.listen();
 
 	const body = await get(t, `http://localhost:${server.address().port}`);
-	t.true(body.includes('title: test'), 'Body should include text from both template and controller');
-	t.true(body.includes('h1: hello cms'), 'Body should include text from both template and controller');
-	t.true(body.includes('partial: partial'), 'Body should include text from partial template');
+	assert(body.includes('title: test'), 'Body should include text from both template and controller');
+	assert(body.includes('h1: hello cms'), 'Body should include text from both template and controller');
+	assert(body.includes('partial: partial'), 'Body should include text from partial template');
 
 	const body2 = await get(t, `http://localhost:${server.address().port}/home`);
-	t.true(body2.includes('title: test'), 'Body should include text from both template and controller');
-	t.true(body2.includes('h1: hello cms'), 'Body should include text from both template and controller');
-	t.true(body2.includes('partial: partial'), 'Body should include text from partial template');
+	assert(body2.includes('title: test'), 'Body should include text from both template and controller');
+	assert(body2.includes('h1: hello cms'), 'Body should include text from both template and controller');
+	assert(body2.includes('partial: partial'), 'Body should include text from partial template');
 
 	const body3 = await get(t, `http://localhost:${server.address().port}/about`);
-	t.true(body3.includes('about stuff'), 'Body should include text from about template');
+	assert(body3.includes('about stuff'), 'Body should include text from about template');
 
 	const body4 = await get(t, `http://localhost:${server.address().port}/nonexisting`, 404);
-	t.true(body4.includes('not found'), 'Body should include text from notFound template');
+	assert(body4.includes('not found'), 'Body should include text from notFound template');
 
 	server.close();
-	t.end();
 });
 
 test('Items', async t => {
@@ -71,22 +72,22 @@ test('Items', async t => {
 	const server = app.listen();
 
 	const body = await get(t, `http://localhost:${server.address().port}/stuff/item1`, 200);
-	//t.true(body.includes('stuff item'), 'Body should include text from item root template');
-	t.true(body.includes('<h2>item1</h2>'), 'Body should include markdown rendered to html');
-	t.true(body.includes('stuff item controller'), 'Item 1 body should include text from controller');
+	//assert(body.includes('stuff item'), 'Body should include text from item root template');
+	assert(body.includes('<h2>item1</h2>'), 'Body should include markdown rendered to html');
+	assert(body.includes('stuff item controller'), 'Item 1 body should include text from controller');
 
 	const body2 = await get(t, `http://localhost:${server.address().port}/stuff/item2`, 200);
-	t.true(body2.includes('item 2'), 'Should include text from item2 template');
-	t.true(body2.includes('partial'), 'Should include text from partial template');
-	t.true(body2.includes('stuff item controller'), 'Item 2 body should include text from controller');
+	assert(body2.includes('item 2'), 'Should include text from item2 template');
+	assert(body2.includes('partial'), 'Should include text from partial template');
+	assert(body2.includes('stuff item controller'), 'Item 2 body should include text from controller');
 
 	const body3 = await get(t, `http://localhost:${server.address().port}/stuff/item3`, 200);
-	t.true(body3.includes('stuff item controller'), 'Body should include text from controller');
-	t.true(body3.includes('{"key":"gloroius data"}'), 'Item 3 body should contain data from data.json');
+	assert(body3.includes('stuff item controller'), 'Body should include text from controller');
+	assert(body3.includes('{"key":"gloroius data"}'), 'Item 3 body should contain data from data.json');
 
 	server.close();
-	t.end();
 });
+
 
 test('Item root content', async t => {
 	const app = express();
@@ -95,12 +96,11 @@ test('Item root content', async t => {
 	const server = app.listen();
 
 	const body = await get(t, `http://localhost:${server.address().port}/stuff`, 200);
-	t.true(body.includes('stuff item'), 'Body should include text from item root template');
-	t.true(body.includes('stuff item controller'), 'Body should include text from controller');
-	t.true(body.includes('root content'), 'Body should include content from root');
+	assert(body.includes('stuff item'), 'Body should include text from item root template');
+	assert(body.includes('stuff item controller'), 'Body should include text from controller');
+	assert(body.includes('root content'), 'Body should include content from root');
 
 	server.close();
-	t.end();
 });
 
 test('Page takes precedense over items at root level', async t => {
@@ -110,14 +110,13 @@ test('Page takes precedense over items at root level', async t => {
 	const server = app.listen();
 
 	const body = await get(t, `http://localhost:${server.address().port}/products/item1`, 200);
-	t.equal('products\r\nproducts/item1', body);
+	assert.strictEqual('products\r\nproducts/item1', body);
 
 	const body2 = await get(t, `http://localhost:${server.address().port}/products`, 200);
-	t.false(body2.includes('this should not be shown'));
-	t.equal('products page', body2);
+	assert.strictEqual(false, body2.includes('this should not be shown'));
+	assert.strictEqual('products page', body2);
 
 	server.close();
-	t.end();
 });
 
 test('Shared content', async t => {
@@ -131,18 +130,17 @@ test('Shared content', async t => {
 
 	// page
 	const body = await get(t, `http://localhost:${server.address().port}/things`, 200);
-	t.true(body.includes('<h2>some shared info</h2>'), 'Body should include markdown-to-html from sharedInfo.md');
-	t.true(body.includes('<p>Mf quote</p>'), 'Body should contain shared template content');
-	t.true(body.includes('{"data":"data is the best"}'), 'Body should include shared data content');
+	assert(body.includes('<h2>some shared info</h2>'), 'Body should include markdown-to-html from sharedInfo.md');
+	assert(body.includes('<p>Mf quote</p>'), 'Body should contain shared template content');
+	assert(body.includes('{"data":"data is the best"}'), 'Body should include shared data content');
 
 	// item
 	const body2 = await get(t, `http://localhost:${server.address().port}/baz/boz`, 200);
-	t.true(body2.includes('<h2>some shared info</h2>'), 'Body2 should include markdown-to-html from sharedInfo.md');
-	t.true(body2.includes('<p>Mf quote</p>'), 'Body2 should contain shared template content');
-	t.true(body2.includes('{"data":"data is the best"}'), 'Body2 should include shared data content');
+	assert(body2.includes('<h2>some shared info</h2>'), 'Body2 should include markdown-to-html from sharedInfo.md');
+	assert(body2.includes('<p>Mf quote</p>'), 'Body2 should contain shared template content');
+	assert(body2.includes('{"data":"data is the best"}'), 'Body2 should include shared data content');
 
 	server.close();
-	t.end();
 });
 
 test('Controller redirct', async t => {
@@ -152,16 +150,15 @@ test('Controller redirct', async t => {
 	const server = app.listen();
 
 	const body = await get(t, `http://localhost:${server.address().port}/redirect`, 302, false);
-	t.equal(body, 'Found. Redirecting to /home', 'Body should indicate where to redirect');
+	assert.strictEqual(body, 'Found. Redirecting to /home', 'Body should indicate where to redirect');
 
 	// redirects to /home
 	const body2 = await get(t, `http://localhost:${server.address().port}/redirect`);
-	t.true(body2.includes('title: test'), 'Body should include text from both template and controller');
-	t.true(body2.includes('h1: hello cms'), 'Body should include text from both template and controller');
-	t.true(body2.includes('partial: partial'), 'Body should include text from partial template');
+	assert(body2.includes('title: test'), 'Body should include text from both template and controller');
+	assert(body2.includes('h1: hello cms'), 'Body should include text from both template and controller');
+	assert(body2.includes('partial: partial'), 'Body should include text from partial template');
 
 	server.close();
-	t.end();
 });
 
 test('Controller redirct moved', async t => {
@@ -171,16 +168,15 @@ test('Controller redirct moved', async t => {
 	const server = app.listen();
 
 	const body = await get(t, `http://localhost:${server.address().port}/redirectMoved`, 301, false);
-	t.equal(body, 'Moved Permanently. Redirecting to /home', 'Body should indicate where to redirect');
+	assert.strictEqual(body, 'Moved Permanently. Redirecting to /home', 'Body should indicate where to redirect');
 
 	// redirects to /home
 	const body2 = await get(t, `http://localhost:${server.address().port}/redirectMoved`);
-	t.true(body2.includes('title: test'), 'Body should include text from both template and controller');
-	t.true(body2.includes('h1: hello cms'), 'Body should include text from both template and controller');
-	t.true(body2.includes('partial: partial'), 'Body should include text from partial template');
+	assert(body2.includes('title: test'), 'Body should include text from both template and controller');
+	assert(body2.includes('h1: hello cms'), 'Body should include text from both template and controller');
+	assert(body2.includes('partial: partial'), 'Body should include text from partial template');
 
 	server.close();
-	t.end();
 });
 
 test('Controller headers', async t => {
@@ -190,13 +186,12 @@ test('Controller headers', async t => {
 	const server = app.listen();
 
 	const response = await axios.get(`http://localhost:${server.address().port}/headers`);
-	t.equal(response.status, 200, 'Response status should be 200');
+	assert.strictEqual(response.status, 200, 'Response status should be 200');
 	const value = response.headers.get('X-Test');
-	t.assert(value, 'Header value should not be null or undefined');
-	t.equal(value, 'header value');
+	assert(value, 'Header value should not be null or undefined');
+	assert.strictEqual(value, 'header value');
 
 	server.close();
-	t.end();
 });
 
 test('Controller, no template', async t => {
@@ -206,13 +201,12 @@ test('Controller, no template', async t => {
 	const server = app.listen();
 
 	const response = await axios.get(`http://localhost:${server.address().port}/raw`);
-	t.equal(200, response.status, 'Response status should be 200');
-	t.equal(response.headers.get('content-type'), 'text/plain', 'Content type should be text/plain');
-	// Axios cannot accept that this should be treated as text. Fuck axios
-	t.equal(JSON.stringify(response.data), '{"one":"yes","two":"no"}', 'Body should contain strigified json');
+	assert.strictEqual(200, response.status, 'Response status should be 200');
+	assert.strictEqual(response.headers.get('content-type'), 'text/plain', 'Content type should be text/plain');
+	// Axios cannot accept that this should be treated as texassert. Fuck axios
+	assert.strictEqual(JSON.stringify(response.data), '{"one":"yes","two":"no"}', 'Body should contain strigified json');
 
 	server.close();
-	t.end();
 });
 
 test('Controller, json', async t => {
@@ -222,14 +216,13 @@ test('Controller, json', async t => {
 	const server = app.listen();
 
 	const response = await axios.get(`http://localhost:${server.address().port}/rawJson`);
-	t.equal(200, response.status, 'Response status should be 200');
-	t.equal(response.headers.get('content-type'), 'application/json', 'Content type should be application/json');
-	t.assert(response.data, 'Body should not be null or undefined');
-	t.equal(response.data.one, 'yes', 'Body.one should contain "yes"');
-	t.equal(response.data.two, 'no', 'Body.two should contain "two"');
+	assert.strictEqual(200, response.status, 'Response status should be 200');
+	assert.strictEqual(response.headers.get('content-type'), 'application/json', 'Content type should be application/json');
+	assert(response.data, 'Body should not be null or undefined');
+	assert.strictEqual(response.data.one, 'yes', 'Body.one should contain "yes"');
+	assert.strictEqual(response.data.two, 'no', 'Body.two should contain "two"');
 
 	server.close();
-	t.end();
 });
 
 test('Controller, cookies', async t => {
@@ -239,13 +232,12 @@ test('Controller, cookies', async t => {
 	const server = app.listen();
 
 	const response = await axios.get(`http://localhost:${server.address().port}/cookies`);
-	t.equal(200, response.status, 'Response status should be 200');
-	t.equal(response.headers.get('content-type'), 'text/plain', 'Content type should be text/plain');
-	t.equal(response.data, 'cookie set', 'Body should be "cookie set"');
-	t.equal(response.headers.get('set-cookie'), 'key=value; Path=/');
+	assert.strictEqual(200, response.status, 'Response status should be 200');
+	assert.strictEqual(response.headers.get('content-type'), 'text/plain', 'Content type should be text/plain');
+	assert.strictEqual(response.data, 'cookie set', 'Body should be "cookie set"');
+	assert.strictEqual(response.headers.get('set-cookie'), 'key=value; Path=/');
 	
 	server.close();
-	t.end();
 });
 
 test('Global variables', async t => {
@@ -258,11 +250,10 @@ test('Global variables', async t => {
 	const server = app.listen();
 
 	const response = await axios.get(`http://localhost:${server.address().port}/globals`);
-	t.equal(200, response.status, 'Response status should be 200');
-	t.equal('hej\r\nhalleluljah \r\npartial', response.data, 'Data should contain stuff from global variables');
+	assert.strictEqual(200, response.status, 'Response status should be 200');
+	assert.strictEqual('hej\r\nhalleluljah \r\npartial', response.data, 'Data should contain stuff from global variables');
 
 	server.close();
-	t.end();
 });
 
 test('Page with data content', async t => {
@@ -272,11 +263,10 @@ test('Page with data content', async t => {
 	const server = app.listen();
 
 	const response = await axios.get(`http://localhost:${server.address().port}/datapage`);
-	t.equal(200, response.status, 'Response status should be 200');
-	t.equal('content', response.data, 'Template should print data from json file');
+	assert.strictEqual(200, response.status, 'Response status should be 200');
+	assert.strictEqual('content', response.data, 'Template should print data from json file');
 
 	server.close();
-	t.end();
 });
 
 test('When controller sets the softNotFound the not found template should be rendered and returned', async t => {
@@ -286,11 +276,10 @@ test('When controller sets the softNotFound the not found template should be ren
 	const server = app.listen();
 
 	const response = await axios.get(`http://localhost:${server.address().port}/softNotFound`, { maxRedirects: 0, validateStatus: () => true });
-	t.equal(404, response.status, 'Response status should be 404');
-	t.equal('not found', response.data, 'Response should equal the contents of the not found template');
+	assert.strictEqual(404, response.status, 'Response status should be 404');
+	assert.strictEqual('not found', response.data, 'Response should equal the contents of the not found template');
 
 	server.close();
-	t.end();
 });
 
 test('Returning a contentStream', async t => {
@@ -301,10 +290,9 @@ test('Returning a contentStream', async t => {
 
 	const response = await axios.get(`http://localhost:${server.address().port}/contentStream`, { maxRedirects: 0, validateStatus: () => true });
 
-	t.equal(response.status, 200, 'Response status should be 200');
-	t.equal(response.headers['content-type'], 'text/javascript', 'Response type should be text/javascript');
-	t.equal(response.data.length, 248, 'Response data length should be the same as test/data/01/pages/contentStream/controller.mjs file');
+	assert.strictEqual(response.status, 200, 'Response status should be 200');
+	assert.strictEqual(response.headers['content-type'], 'text/javascript', 'Response type should be text/javascript');
+	assert.strictEqual(response.data.length, 248, 'Response data length should be the same as test/data/01/pages/contentStream/controller.mjs file');
 
 	server.close();
-	t.end();
 });

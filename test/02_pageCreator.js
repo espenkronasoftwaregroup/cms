@@ -1,4 +1,5 @@
-import test from 'tape';
+import test from 'node:test';
+import assert from 'node:assert/strict';
 import {PageCreator} from '../src/index.js';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -13,21 +14,22 @@ const options = {
 	notFoundTemplatePath: path.join(__dirname, 'data/notFound.ejs')
 };
 
+
 test('Page creator, override item content', async t => {
 	const pc = new PageCreator(options);
 	const req = {
 		path: '/stuff/item1'
 	};
-	const newContent = '<h2>new shiny content</h2>';
-	const result = await pc.createPage(req, { itemContentHtmlStrings: { content: newContent }});
+	const result = await pc.createPage(req, { itemContentFilesOverrides: { 'content.md': '## some shit' }});
 
-	t.assert(result, 'Result should not be null or undefined');
-	t.equal(result.status, 200, 'Status code should be 200');
-	t.assert(result.contentType, 'Content type should be set');
-	t.equal(result.contentType, 'text/html', 'Content type should be text/hml');
-	t.assert(result.content, 'Content should be set');
-	t.true(result.content.includes('<h2>new shiny content</h2>'), 'Content should include the injected content string');
+	assert(result, 'Result should not be null or undefined');
+	assert.strictEqual(result.status, 200, 'Status code should be 200');
+	assert(result.contentType, 'Content type should be set');
+	assert.strictEqual(result.contentType, 'text/html', 'Content type should be text/hml');
+	assert(result.content, 'Content should be set');
+	assert(result.content.includes('<h2>some shit</h2>'), 'Content should include the injected content string');
 });
+
 
 test('Page creator, override item template', async t => {
 	const pc = new PageCreator(options);
@@ -35,15 +37,16 @@ test('Page creator, override item template', async t => {
 		path: '/stuff/item2'
 	};
 	const newContent = '<p><%= viewData.title %></p>';
-	const result = await pc.createPage(req, { itemContentTemplateStrings: { content: newContent }});
+	const result = await pc.createPage(req, { itemTemplateOverride: newContent });
 
-	t.assert(result, 'Result should not be null or undefined');
-	t.equal(result.status, 200, 'Status code should be 200');
-	t.assert(result.contentType, 'Content type should be set');
-	t.equal(result.contentType, 'text/html', 'Content type should be text/hml');
-	t.assert(result.content, 'Content should be set');
-	t.true(result.content.includes('<p>stuff item controller</p>'), 'Content should include the injected template string');
+	assert(result, 'Result should not be null or undefined');
+	assert.strictEqual(result.status, 200, 'Status code should be 200');
+	assert(result.contentType, 'Content type should be set');
+	assert.strictEqual(result.contentType, 'text/html', 'Content type should be text/hml');
+	assert(result.content, 'Content should be set');
+	assert(result.content.includes('<p>stuff item controller</p>'), 'Content should include the injected template string');
 });
+
 
 test('Page creator, override item controller', async t => {
 	const pc = new PageCreator(options);
@@ -62,14 +65,14 @@ test('Page creator, override item controller', async t => {
 		export {controller}
 	`;
 
-	const result = await pc.createPage(req, { itemControllerJsString: newContent });
+	const result = await pc.createPage(req, { itemControllerOverride: newContent });
 
-	t.assert(result, 'Result should not be null or undefined');
-	t.equal(result.status, 200, 'Status code should be 200');
-	t.assert(result.contentType, 'Content type should be set');
-	t.equal(result.contentType, 'text/html', 'Content type should be text/html');
-	t.assert(result.content, 'Content should be set');
-	t.equal(result.content, '<h1>dynamic controller!</h1>', 'Controller dynamic content should be in the result');
+	assert(result, 'Result should not be null or undefined');
+	assert.strictEqual(result.status, 200, 'Status code should be 200');
+	assert(result.contentType, 'Content type should be set');
+	assert.strictEqual(result.contentType, 'text/html', 'Content type should be text/html');
+	assert(result.content, 'Content should be set');
+	assert.strictEqual(result.content, '<h1>dynamic controller!</h1>', 'Controller dynamic content should be in the result');
 });
 
 test('Page create should pass the controller its own path', async t => {
@@ -89,12 +92,12 @@ test('Page create should pass the controller its own path', async t => {
 		export {controller}
 	`;
 
-	const result = await pc.createPage(req, { itemControllerJsString: newContent });
+	const result = await pc.createPage(req, { itemControllerOverride: newContent });
 
-	t.assert(result, 'Result should not be null or undefined');
-	t.equal(result.status, 200, 'Status code should be 200');
-	t.assert(result.contentType, 'Content type should be set');
-	t.equal(result.contentType, 'text/plain', 'Content type should be text/plain');
-	t.assert(result.content, 'Content should be set');
-	t.equal(result.content, '/bar', 'Controller dynamic content should be the controller path');
+	assert(result, 'Result should not be null or undefined');
+	assert.strictEqual(result.status, 200, 'Status code should be 200');
+	assert(result.contentType, 'Content type should be set');
+	assert.strictEqual(result.contentType, 'text/plain', 'Content type should be text/plain');
+	assert(result.content, 'Content should be set');
+	assert.strictEqual(result.content, '/bar', 'Controller dynamic content should be the controller path');
 });
