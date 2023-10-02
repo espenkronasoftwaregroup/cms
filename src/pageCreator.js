@@ -97,42 +97,45 @@ export class PageCreator {
 			diskCache.sharedContent[this.opts.sharedContentPath] = sharedContent;
 		}
 
+		const requestedPath = customPath || req.path;
+
 		let data = {
 			viewData: {
 				sharedContent,
 				content: {},
-				activePath: req.path,
+				activePath: requestedPath,
 				query: req.query,
 				jsBundles: this.opts.jsBundles, // todo: these should not be here
 				cssBundles: this.opts.cssBundles,
 			}
 		};
 
-		let pagePath = await this.getPagePath(customPath || req.path);
-		let pageRootPath = null;
+		let pagePath = await this.getPagePath(requestedPath);
+		let fsRootPath = null;
 		let isItem = false;
 		let itemName;
 		
-		if ((this.items[req.path] && path.basename(req.path) !== pagePath.substr(1)) || (pagePath && this.items[pagePath] && (!this.pages[pagePath] ))) {
-			pageRootPath = this.items[pagePath];
+		if (this.items[requestedPath] && !this.pages[requestedPath]){
+		//if ((this.items[req.path] && path.basename(req.path) !== pagePath.substr(1)) || (pagePath && this.items[pagePath] && (!this.pages[pagePath] ))) {
+			fsRootPath = this.items[pagePath];
 			isItem = true;
-			itemName = path.basename(req.path);
+			itemName = path.basename(requestedPath);
 		} else if (pagePath && this.pages[pagePath]) {
-			pageRootPath = this.pages[pagePath];
+			fsRootPath = this.pages[pagePath];
 		}
 
-		if (pageRootPath) {
-			data.viewData.pageRootPath = pageRootPath;
+		if (fsRootPath) {
+			data.viewData.pageRootPath = fsRootPath;
 			let contents;
 
-			if (diskCache[pageRootPath]) {
-				contents = diskCache[pageRootPath];
+			if (diskCache[fsRootPath]) {
+				contents = diskCache[fsRootPath];
 			} else {
-				contents = await readDir(pageRootPath);
+				contents = await readDir(fsRootPath);
 			}
 
 			if (contents.includes('controller.mjs')) {
-				const controllerPath = path.join(pageRootPath, 'controller.mjs');
+				const controllerPath = path.join(fsRootPath, 'controller.mjs');
 				let module = await import(pathToFileURL(controllerPath));
 				
 				// load controller from override
@@ -157,7 +160,7 @@ export class PageCreator {
 
 				// execute controller
 				try {
-					controllerResult = await module.controller({...req, path: customPath || req.path}, { ...this.opts, pageCreator: this, controllerPath: pagePath });
+					controllerResult = await module.controller({...req, path: requestedPath}, { ...this.opts, pageCreator: this, controllerPath: pagePath });
 				} catch (err) {
 					return {
 						status: 500,
@@ -204,7 +207,7 @@ export class PageCreator {
 					return {
 						status: 500,
 						contentType: 'text/plain',
-						content: `Page path ${pageRootPath} does not have a template and controller did not return raw content.`
+						content: `Page path ${fsRootPath} does not have a template and controller did not return raw content.`
 					}
 				}
 
@@ -215,13 +218,13 @@ export class PageCreator {
 				// If this is a request for an item, first check in the item dir for a content template
 				// and use that if it exits. If that does not exist, check for a content markdown file
 				// and render that as html instead.
-				let contentPath = pageRootPath;
+				let contentPath = fsRootPath;
 				if (isItem) {
-					contentPath = path.join(pageRootPath, itemName);
+					contentPath = path.join(fsRootPath, itemName);
 
 					// if this cannot be read we might be at root level
 					if (!await canRead(contentPath)) {
-						contentPath = pageRootPath;
+						contentPath = fsRootPath;
 					}
 				}
 
@@ -303,13 +306,13 @@ export class PageCreator {
 				}
 
 				try {
-					const views = [pageRootPath, this.opts.partialsPath];
+					const views = [fsRootPath, this.opts.partialsPath];
 
 					if (isItem) {
-						views.push(path.join(pageRootPath, itemName));
+						views.push(path.join(fsRootPath, itemName));
 					}
 
-					const templatePath = path.join(pageRootPath,  'template.ejs');
+					const templatePath = path.join(fsRootPath,  'template.ejs');
 					let templateString;
 
 					if (isItem && itemTemplateOverride) {
@@ -317,7 +320,7 @@ export class PageCreator {
 					} else if (diskCache[templatePath]) {
 						templateString = diskCache[templatePath];
 					} else {
-						templateString = (await readFile(path.join(pageRootPath,  'template.ejs'))).toString();
+						templateString = (await readFile(path.join(fsRootPath,  'template.ejs'))).toString();
 						diskCache[templatePath] = templateString;
 					}
 
@@ -327,7 +330,7 @@ export class PageCreator {
 					return {
 						status: 500,
 						contentType: 'text/plain',
-						content: `Template at ${pageRootPath}/template.ejs exploded\n${err.stack}`
+						content: `Template at ${fsRootPath}/template.ejs exploded\n${err.stack}`
 					}
 				}
 
