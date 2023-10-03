@@ -7,6 +7,64 @@ import MarkdownIt from "markdown-it";
 
 const diskCache = {pagePath: {}, sharedContent: {}};
 
+async function getFolderContents(fsPath) {
+	let contents;
+
+	if (diskCache[fsPath]) {
+		contents = diskCache[fsPath];
+	} else {
+		contents = await readDir(fsPath);
+	}
+
+	return contents;
+}
+
+async function getItemContents(contentPath) {
+	const itemContents = await getFolderContents(contentPath);
+
+	// md and json files must be read before template files as the templates might reference those.
+	itemContents.sort((a, b) => {
+		if (a.endsWith('.ejs') && !b.endsWith('.ejs')) {
+			return 1;
+		} else if (!a.endsWith('.ejs') && b.endsWith('.ejs')) {
+			return -1;
+		} else {
+			return 0;
+		}
+	});
+
+	return itemContents;
+}
+
+async function loadControllerModuleFromString(controllerString) {
+	// because of reasons javascript is a lot easier to load from disk, so write that shit to file first.
+	const tmpfile = await getTempFilePath();
+	fs.writeFileSync(tmpfile, controllerString, 'utf-8');
+	return await import(pathToFileURL(tmpfile));
+}
+
+async function getFileContents(filePath, itemContentFilesOverrides) {
+	const fileName = path.basename(filePath);
+	let fileContent;
+
+	if (itemContentFilesOverrides?.[fileName]) {
+		fileContent = itemContentFilesOverrides?.[fileName];
+	} else if (diskCache[filePath]) {
+		fileContent = diskCache[filePath];
+	} else {
+		if (await canRead(filePath)) {
+			try {
+				fileContent = (await readFile(filePath)).toString();
+				diskCache[filePath] = fileContent;
+			} catch (err) {
+				throw new Error(`Failed to read file ${fileName}, : ${err.message}`);
+			}
+		}
+	}
+
+	return fileContent;
+}
+
 export class PageCreator {
 	constructor(opts) {
 		this.opts = opts;
@@ -18,6 +76,17 @@ export class PageCreator {
 		// här behöver man kanske lägga in fs.watch för att ladda om pages och items när filer förändras på disk... eller iaf när dom skapas/tas bort
 	}
 
+	/*
+		Checks the items and pages trees to find the correct path based on url.
+		For example, consider the path /products/car/yellow:
+
+		The "products" part of the url is the item type.
+		The "car" part of the url is the item name.
+		The "yellow" part of the url is a virtual path which is handled by the products controller.
+
+		That url will return  /products because the products item controller and template is
+		what will be used to display the item.
+	*/
 	async getPagePath(urlPath) {
 
 		if (diskCache.pagePath[urlPath]) return diskCache.pagePath[urlPath];
@@ -76,30 +145,35 @@ export class PageCreator {
 		return result;
 	}
 
+	async getSharedContent(sharedContentPath) {
+		let sharedContent;
+
+		if (diskCache.sharedContent[sharedContentPath]) {
+			sharedContent = diskCache.sharedContent[this.opts.sharedContentPath];
+		} else {
+			sharedContent = await this.buildSharedContentTree(sharedContentPath);
+			diskCache.sharedContent[sharedContentPath] = sharedContent;
+		}
+
+		return sharedContent;
+	}
+
 	/**
 	 * Compile a content, content type and status code for a request
 	 * @param {*} req the express request object
 	 * @param {string} opts.customPath A custom path used for controller/template/content look up. If not supplied req.path will be used
 	 * @returns {*} Response data
 	 */
-	async createPage(req, {customPath, itemControllerOverride, itemTemplateOverride, itemContentFilesOverrides} = {}) {
+	async createPage(req, {customPath, itemContentFilesOverrides} = {}) {
 		const result = {
 			status: 200,
 			contentType: 'text/html'
 		}
 
-		let sharedContent;
-
-		if (diskCache.sharedContent[this.opts.sharedContentPath]) {
-			sharedContent = diskCache.sharedContent[this.opts.sharedContentPath];
-		} else {
-			sharedContent = await this.buildSharedContentTree(this.opts.sharedContentPath);
-			diskCache.sharedContent[this.opts.sharedContentPath] = sharedContent;
-		}
-
+		const sharedContent = await this.getSharedContent(this.opts.sharedContentPath);
 		const requestedPath = customPath || req.path;
 
-		let data = {
+		const data = {
 			viewData: {
 				sharedContent,
 				content: {},
@@ -116,7 +190,6 @@ export class PageCreator {
 		let itemName;
 		
 		if (this.items[requestedPath] && !this.pages[requestedPath]){
-		//if ((this.items[req.path] && path.basename(req.path) !== pagePath.substr(1)) || (pagePath && this.items[pagePath] && (!this.pages[pagePath] ))) {
 			fsRootPath = this.items[pagePath];
 			isItem = true;
 			itemName = path.basename(requestedPath);
@@ -126,25 +199,16 @@ export class PageCreator {
 
 		if (fsRootPath) {
 			data.viewData.pageRootPath = fsRootPath;
-			let contents;
 
-			if (diskCache[fsRootPath]) {
-				contents = diskCache[fsRootPath];
-			} else {
-				contents = await readDir(fsRootPath);
-			}
+			const contents = await getFolderContents(fsRootPath);
 
 			if (contents.includes('controller.mjs')) {
-				const controllerPath = path.join(fsRootPath, 'controller.mjs');
-				let module = await import(pathToFileURL(controllerPath));
 				
-				// load controller from override
-				if (itemControllerOverride) {
-					// because of reasons javascript is a lot easier to load from disk, so write that shit to file first.
+				let module;
+				
+				if (itemContentFilesOverrides?.['controller.mjs']) {
 					try {
-						const tmpfile = await getTempFilePath();
-						fs.writeFileSync(tmpfile, itemControllerOverride, 'utf-8');
-						module = await import(pathToFileURL(tmpfile));
+						module = await loadControllerModuleFromString(itemContentFilesOverrides['controller.mjs']);
 					} catch (err) {
 						return {
 							status: 400,
@@ -152,7 +216,9 @@ export class PageCreator {
 							content: `Injected controller code exploded!\n${err.stack}`
 						}
 					}
+
 				} else {
+					const controllerPath = path.join(fsRootPath, 'controller.mjs');
 					module = await import(pathToFileURL(controllerPath));
 				}
 
@@ -169,6 +235,7 @@ export class PageCreator {
 					}
 				}
 
+				// handle controller results
 				if (controllerResult.cookie) {
 					result.cookie = controllerResult.cookie;
 				}
@@ -219,6 +286,7 @@ export class PageCreator {
 				// and use that if it exits. If that does not exist, check for a content markdown file
 				// and render that as html instead.
 				let contentPath = fsRootPath;
+
 				if (isItem) {
 					contentPath = path.join(fsRootPath, itemName);
 
@@ -228,26 +296,7 @@ export class PageCreator {
 					}
 				}
 
-				let itemContents;
-
-				// load filenames from cache if possible
-				if (diskCache[contentPath]) {
-					itemContents = diskCache[contentPath];
-				} else {
-					itemContents = await readDir(contentPath);
-					diskCache[contentPath] = itemContents;
-				}
-
-				// md and json files must be read before template files as the templates might reference those.
-				itemContents.sort((a, b) => {
-					if (a.endsWith('.ejs') && !b.endsWith('.ejs')) {
-						return 1;
-					} else if (!a.endsWith('.ejs') && b.endsWith('.ejs')) {
-						return -1;
-					} else {
-						return 0;
-					}
-				});
+				const itemContents = await getItemContents(contentPath);
 
 				for (const fileName of itemContents) {
 					if (fileName === 'template.ejs') continue;
@@ -256,26 +305,7 @@ export class PageCreator {
 					const fileNameWithoutExt = fileName.replace(path.extname(fileName), '');
 
 					const fp = path.join(contentPath, fileName);
-					let fileContent;
-
-					if (itemContentFilesOverrides?.[fileName]) {
-						fileContent = itemContentFilesOverrides?.[fileName];
-					} else if (diskCache[fp]) {
-						fileContent = diskCache[fp];
-					} else {
-						if (await canRead(fp)) {
-							try {
-								fileContent = (await readFile(fp)).toString();
-								diskCache[fp] = fileContent;
-							} catch (err) {
-								return {
-									status: 500,
-									contentType: 'text/plain',
-									content: `Failed to read file ${fileName}, : ${err.message}\n${err.stack}`
-								}
-							}
-						}
-					}
+					const fileContent = await getFileContents(fp, itemContentFilesOverrides);
 
 					if (fileContent) {
 						if (fileName.endsWith('.md')) {
@@ -300,6 +330,7 @@ export class PageCreator {
 									contentType: 'text/plain',
 									content: `EJS at ${fp} exploded\n${err.stack}`
 								}
+
 							}
 						}
 					}
@@ -313,17 +344,7 @@ export class PageCreator {
 					}
 
 					const templatePath = path.join(fsRootPath,  'template.ejs');
-					let templateString;
-
-					if (isItem && itemTemplateOverride) {
-						templateString = itemTemplateOverride;
-					} else if (diskCache[templatePath]) {
-						templateString = diskCache[templatePath];
-					} else {
-						templateString = (await readFile(path.join(fsRootPath,  'template.ejs'))).toString();
-						diskCache[templatePath] = templateString;
-					}
-
+					const templateString = await getFileContents(templatePath, itemContentFilesOverrides);
 					const html = ejs.render(templateString, data, { views, context: req.globals || {} });
 					result.content = html;
 				} catch (err) {

@@ -37,7 +37,7 @@ test('Page creator, override item template', async t => {
 		path: '/stuff/item2'
 	};
 	const newContent = '<p><%= viewData.title %></p>';
-	const result = await pc.createPage(req, { itemTemplateOverride: newContent });
+	const result = await pc.createPage(req, { itemContentFilesOverrides: { 'template.ejs': newContent }});
 
 	assert(result, 'Result should not be null or undefined');
 	assert.strictEqual(result.status, 200, 'Status code should be 200');
@@ -65,7 +65,7 @@ test('Page creator, override item controller', async t => {
 		export {controller}
 	`;
 
-	const result = await pc.createPage(req, { itemControllerOverride: newContent });
+	const result = await pc.createPage(req, { itemContentFilesOverrides: { 'controller.mjs': newContent }});
 
 	assert(result, 'Result should not be null or undefined');
 	assert.strictEqual(result.status, 200, 'Status code should be 200');
@@ -92,7 +92,7 @@ test('Page create should pass the controller its own path', async t => {
 		export {controller}
 	`;
 
-	const result = await pc.createPage(req, { itemControllerOverride: newContent });
+	const result = await pc.createPage(req, { itemContentFilesOverrides: {'controller.mjs': newContent }});
 
 	assert(result, 'Result should not be null or undefined');
 	assert.strictEqual(result.status, 200, 'Status code should be 200');

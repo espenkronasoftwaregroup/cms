@@ -3,6 +3,11 @@ import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 
+/**
+ * Read contents of file. Async wrapper around fs.readFile
+ * @param {string} filePath Path to file to read contents from
+ * @returns {Promise<Buffer>} File contents
+ */
 function readFile(filePath) {
 	return new Promise((resolve, reject) => {
 		fs.readFile(filePath, (err, data) => {
@@ -12,6 +17,11 @@ function readFile(filePath) {
 	});
 }
 
+/**
+ * Read contents of directory. Async wrapper around fs.readdir
+ * @param {string} dirPath Path to read contents from
+ * @returns {Promise<[string]>} Array of strings with names of folder content
+ */
 function readDir(dirPath) {
 	return new Promise((resolve, reject) => {
 		fs.readdir(dirPath, (err, data) => {
@@ -21,6 +31,11 @@ function readDir(dirPath) {
 	})
 }
 
+/**
+ * Read contents of directory and include file types. Async wrapper around fs.readdir
+ * @param {string} dirPath Path to read contents from
+ * @returns {Promise<[string]>} Array of strings with names and types of folder content
+ */
 function readDirWithTypes(dirPath) {
 	return new Promise((resolve, reject) => {
 		fs.readdir(dirPath, { withFileTypes: true }, (err, data) => {
