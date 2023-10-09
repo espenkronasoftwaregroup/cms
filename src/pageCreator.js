@@ -205,6 +205,7 @@ export class PageCreator {
 			if (contents.includes('controller.mjs')) {
 				
 				let module;
+				const controllerPath = path.join(fsRootPath, 'controller.mjs');
 				
 				if (itemContentFilesOverrides?.['controller.mjs']) {
 					try {
@@ -218,7 +219,7 @@ export class PageCreator {
 					}
 
 				} else {
-					const controllerPath = path.join(fsRootPath, 'controller.mjs');
+					
 					module = await import(pathToFileURL(controllerPath));
 				}
 
