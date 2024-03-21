@@ -332,6 +332,9 @@ export class PageCreator {
 							try {
 								data.viewData.content[fileNameWithoutExt] = ejs.render(fileContent.toString(), {...data}, { views: [this.opts.partialsPath], context: req.globals || {}});
 							} catch (err) {
+
+								this.opts.logger?.error(`EJS at ${fp} exploded`, { Stack: err.stack });
+
 								return {
 									status: 500,
 									contentType: 'text/plain',
@@ -356,7 +359,7 @@ export class PageCreator {
 					result.content = html;
 				} catch (err) {
 
-					this.opts?.logger.error(`Template at ${fsRootPath}/template.ejs exploded`, { Error: err });
+					this.opts?.logger.error(`Template at ${fsRootPath}/template.ejs exploded`, { Stack: err.stack });
 
 					return {
 						status: 500,
