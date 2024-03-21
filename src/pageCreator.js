@@ -229,6 +229,9 @@ export class PageCreator {
 				try {
 					controllerResult = await module.controller({...req, path: requestedPath}, { ...this.opts, pageCreator: this, controllerPath: pagePath });
 				} catch (err) {
+
+					this.opts.logger?.error(`Controller at ${controllerPath} exploded`, { Error: err })
+
 					return {
 						status: 500,
 						contentType: 'text/plain',
@@ -271,6 +274,9 @@ export class PageCreator {
 					result.contentStream = controllerResult.raw.contentStream;
 					return result;
 				} else if (!contents.includes('template.ejs')) {
+
+					this.opts.logger?.error(`Page path ${fsRootPath} does not have a template and controller did not return raw content`);
+
 					// if there is no template the content type must be raw otherwise we dont know how to render
 					return {
 						status: 500,
@@ -349,6 +355,9 @@ export class PageCreator {
 					const html = ejs.render(templateString, data, { views, context: req.globals || {} });
 					result.content = html;
 				} catch (err) {
+
+					this.opts?.logger.error(`Template at ${fsRootPath}/template.ejs exploded`, { Error: err });
+
 					return {
 						status: 500,
 						contentType: 'text/plain',
