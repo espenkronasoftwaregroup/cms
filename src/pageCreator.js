@@ -230,7 +230,7 @@ export class PageCreator {
 					controllerResult = await module.controller({...req, path: requestedPath}, { ...this.opts, pageCreator: this, controllerPath: pagePath });
 				} catch (err) {
 
-					this.opts.logger?.error(`Controller at ${controllerPath} exploded`, { Error: err })
+					this.opts.logger?.error(`Controller at ${controllerPath} exploded`, { Stack: err.stack })
 
 					return {
 						status: 500,
